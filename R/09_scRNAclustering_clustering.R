@@ -1,6 +1,6 @@
 #' superimpose.data
 #' 
-#' Superimpose scRNA-seq CNVs onto scDNA-seq CNVs; this function integrates 
+#' Superimpose scRNA-seq CNVs onto scDNA-seq CNVs. This function integrates 
 #' high-confidence "Determined CNVs" (typically from scDNA-seq) with experimental 
 #' CNV regions (typically from scRNA-seq). It calculates the genomic overlap ratio 
 #' for each cell group to determine if a specific CNV event is functionally present.
@@ -10,7 +10,7 @@
 #' @param DeterminedCNVs A data.frame containing the scDNA-seq CNV regions. 
 #'   Must include columns: \code{chr}, \code{CN}, \code{CNV_start}, \code{CNV_end}, 
 #'   and \code{CNV_region}.
-#' @param cnv_ratio A numeric value between 0 and 1 serving as the overlap threshold. 
+#' @param cnv_ratio_RNA A numeric value between 0 and 1 serving as the overlap threshold. 
 #' If the ratio of intersection length to total target CNV length meets or exceeds 
 #' this value, the variation is flagged as present (\code{final_cnv = 1})
 #'
@@ -22,7 +22,7 @@
 #'   \item \strong{Segment Logic}: Uses a coordinate-based flag system 
 #'   (\code{F_start}, \code{F_end}) to identify how the scRNA-seq data overlaps 
 #'   with scDNA-seq Data.
-#'   \item \strong{Ratio Calculation}: Determines the \code{cnv_ratio} 
+#'   \item \strong{Ratio Calculation}: Determines the \code{cnv_ratio_RNA} 
 #'   (percentage of the scDNA-seq Data covered by scRNA-seq Data).
 #'   \item \strong{Final Call}: Assigns \code{final_cnv = 1} if the overlap ratio 
 #'   is at least 50% (\eqn{\ge 0.5}), and \code{0} otherwise.
@@ -31,14 +31,14 @@
 #' @return The original \code{inputFILE} list with an additional \code{superimpose} 
 #'   data.frame containing the overlap statistics and final CNV calls.
 #'
-superimpose.data <- function(inputFILE, DeterminedCNVs, cnv_ratio)
+superimpose.data <- function(inputFILE, DeterminedCNVs, cnv_ratio_RNA)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 9.1_cnvTree_", cnvTree_v_num) 
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   Groups <- unique(inputFILE$cnv_grouping$cell_group_name)
   superimpose <- NULL
@@ -74,13 +74,13 @@ superimpose.data <- function(inputFILE, DeterminedCNVs, cnv_ratio)
                           CNV_range = CNV_end - CNV_start + 1,
                           cnv_range = ifelse(is.na(cnv_range) == TRUE, 0, cnv_range),
                           Cnv_ratio = cnv_range / CNV_range,
-                          final_cnv = ifelse(Cnv_ratio >= cnv_ratio, 1, 0)) %>%
+                          final_cnv = ifelse(Cnv_ratio >= cnv_ratio_RNA, 1, 0)) %>%
                    rbind(., superimpose)
   }
   inputFILE$superimpose <- superimpose
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(inputFILE)
 }
 
@@ -117,12 +117,11 @@ superimpose.FileLevel <- function(inputFILE, DeterminedCNVs)
   fucStep <- paste0(" 9.2_cnvTree_", cnvTree_v_num) 
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   Groups <- unique(inputFILE$superimpose$cell_group_name)
   output <- NULL
-  
-  for (groups in 1:length(Groups)) {
+  for (groups in 1:length(Groups)) { 
     cellID_list <- inputFILE$cnv_grouping %>% 
                    filter(cell_group_name %in% c(Groups[groups])) %>%
                    pull(cellID)
@@ -130,15 +129,25 @@ superimpose.FileLevel <- function(inputFILE, DeterminedCNVs)
                    filter(cell_group_name %in% c(Groups[groups])) %>%
                    arrange(CNV_region) %>%
                    pull(final_cnv)
-    result_table <- data.frame(matrix(ncol = length(cnv_pattern), 
-                                      nrow = length(cellID_list)))
-    result_table <- t(sapply(1:length(cellID_list), function(i) cnv_pattern))
-    rownames(result_table) <- cellID_list
-    output <- rbind(output, result_table)
+    
+    if (length(cnv_pattern) != 1) {
+      result_table <- data.frame(matrix(ncol = length(cnv_pattern), 
+                                        nrow = length(cellID_list)))
+      result_table <- t(sapply(1:length(cellID_list), function(i) cnv_pattern))
+      rownames(result_table) <- cellID_list
+      output <- rbind(output, result_table)
+    } else {
+      result_table <- data.frame(matrix(cnv_pattern,
+                                        ncol = length(cnv_pattern), 
+                                        nrow = length(cellID_list)))
+      result_table <- data.frame(sapply(1:length(cellID_list), function(i) cnv_pattern))
+      rownames(result_table) <- cellID_list
+      output <- rbind(output, result_table)
+    }
   }
   colnames(output) <- paste0("CNV", DeterminedCNVs$CNV_region)
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(output)
 }

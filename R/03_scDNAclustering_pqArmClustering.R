@@ -22,8 +22,8 @@
 #'   - `name`: Name of cytogenetic band.
 #'   - `gieStain`: Giemsa stain results.
 #'
-#' @return A matrix with smoothed copy number states (Total Deletion, Loss, 
-#'  Neutral, or Amplification) at the arm level across chromosomes.
+#' @return A matrix with smoothed copy number states at the arm level across 
+#'  chromosomes.
 #'  
 NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
 {
@@ -35,7 +35,7 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
   # Locked variable
   cluster <- getOption("cluster")
 
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   Clustering_output <- data.frame(cluster = cluster, cell = names(input))
   selected_files <- subset(Clustering_output, 
@@ -44,7 +44,7 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
   CN_matrix <- NEW_CN_seq(input = input, Template = selected_files$cell)
   CN_matrix <- NEW_pqArm_DelNeuAmp(matrix = CN_matrix)
 
-  ### calculate bin position: start & end
+  # calculate bin position: start & end
   CN_binsLevel <- CN_matrix_temp %>%
                   dplyr::group_by(.data$chr, .data$arm) %>%
                   dplyr::summarise(Freq = dplyr::n(), .groups = "drop") %>%
@@ -54,11 +54,11 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
   CN_binsLevel$end <- sapply(1:nrow(CN_binsLevel), function(x) {
                              sum(CN_binsLevel$Freq[1:x]) })
   
-  ### Binned Smoothing for Single-Cell Copy Number Data
+  # Binned Smoothing for Single-Cell Copy Number Data
   get_mode <- function(x, bin_idx, col_idx) 
   {
     if (all(is.na(x))) return(NA)
-    ux <- sort(unique(x)) # LH: forced to be faithful to its' Code
+    ux <- sort(unique(x))
     counts <- tabulate(match(x, ux))
     
     if (length(counts) > 1) {
@@ -76,7 +76,7 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
                                             get_mode(pq_CNmatrix[, j], i, j) })
                         return(row_modes) })
   Smooth_pqCN <- do.call(rbind, result_list)
-  ### rename Smooth_pqCN
+  # rename Smooth_pqCN
   n_chrs <- length(levels(CN_matrix_temp$chr))
   Smooth_pqCN <- Smooth_pqCN %>%
                  as.data.frame() %>%
@@ -85,7 +85,7 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
                                      rep(c("p", "q"), times = n_chrs)))
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(Smooth_pqCN)
 }
 
@@ -109,7 +109,7 @@ NEW_pqArm_CN <- function(input, Cluster_label, Clustering_output, pqArm_file)
 #'      - `gieStain`: Giemsa stain results.
 #'
 #' @return A data frame containing the defined genomic ranges for p/q arms across 
-#'    all chromosomes.
+#'   all chromosomes.
 #'    
 NEW_CN_template <- function(input, pqArm_file)
 {
@@ -118,13 +118,12 @@ NEW_CN_template <- function(input, pqArm_file)
   fucStep <- paste0(" 3.1.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   CN_tem <- input[[1]]$bins %>% 
             as.data.frame() %>% 
-            dplyr::select(chr = seqnames, start, end, width) # NO chr X,Y
+            dplyr::select(chr = seqnames, start, end, width) 
 
-  #============= original pqArm_file.remake() + pqArm_file.pq()=================
   # Add p/q arm information on the template
   # 非p即q
   file_path_Template <- system.file("extdata", 
@@ -136,8 +135,6 @@ NEW_CN_template <- function(input, pqArm_file)
     pqArm_range_temp <- readRDS(file_path_Template)
   } # chr X,Y
   pqArm_range <- pqArm_range_temp %>% dplyr::filter(.data$arm == "p") # chr X,Y
-  #=============================================================================
-  
   CN_temp <- vector("list", nrow(pqArm_range)) # a list: optional for chr X,Y
 
   for (i in 1:nrow(pqArm_range)) {
@@ -147,14 +144,14 @@ NEW_CN_template <- function(input, pqArm_file)
                                   .data$end <= pqArm_range$end[i]) %>%
       dplyr::mutate(arm = pqArm_range$arm[i])
   }
-  CN_tem_pq <- CN_tem %>% # No chr X,Y
+  CN_tem_pq <- CN_tem %>% 
                dplyr::left_join(dplyr::bind_rows(CN_temp), 
                                 by = c("chr", "start", "end", "width")) %>%
                tidyr::replace_na(list(arm = "q")) %>%
                dplyr::arrange(.data$chr, .data$start)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(CN_tem_pq)
 }
 
@@ -180,7 +177,7 @@ NEW_pqArm_file.pq <- function(Template)
   fucStep <- paste0(" 3.1.1.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   x <- Template %>%
        dplyr::rename(ChromStart = start, ChromEnd = end) %>%
@@ -193,7 +190,7 @@ NEW_pqArm_file.pq <- function(Template)
        dplyr::select(c("chr", "start", "end", "arm"))
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(x)
 }
 
@@ -202,46 +199,38 @@ NEW_pqArm_file.pq <- function(Template)
 #' 
 #' Transform CN matrix to Del/Neu/Amp four types. Categorize copy number variations 
 #' into three types; this function classifies copy number variations (CNVs) into 
-#' three discrete categories: Total Deletion (CN < 0.5), Loss (CN < 2), Neutral 
-#' (CN = 2), and Amplification (CN > 2). The input matrix represents copy number 
+#' three discrete categories: Total Deletion, Loss, Neutral, Gain, Amplification  
+#' , and High Amplification. The input matrix represents copy number 
 #' data across genomic regions for multiple cells.
 #'
 #' @param matrix An integer matrix where columns represent individual cells, and 
-#'    rows correspond to fixed-bin size genomic regions across all chromosomes.
+#'  rows correspond to fixed-bin size genomic regions across all chromosomes.
 #'
 #' @return An integer matrix containing only values 0, 1, and 2, representing:
 #' 
-#'   - `0`: Total Deletion (CN < 0.5)
-#'   - `1`: Loss (0.5 <= CN < 2)
+#'   - `0`: Total Loss (0 <= CN < 1)
+#'   - `1`: Loss (1 <= CN < 2)
 #'   - `2`: Neutral (CN = 2)
-#'   - `3`: Amplification (CN > 2)
+#'   - `3`: Gain (2 < CN <= 3)
+#'   - `4`: Amplification (3 < CN <= 4)
+#'   - `5`: High Amplification (4 < CN)
 #'
 NEW_pqArm_DelNeuAmp <- function(matrix) ## function: 3.1.2 ##
 {
+  #---------------------- main code start below ---------------------
+  
   new_matrix <- base::matrix(NA, nrow(matrix), ncol(matrix)) 
   
-  # strategy 1 ================================================
-  #new_matrix[matrix < 2] <- 1                 # Total Deletion
-  #new_matrix[matrix == 2] <- 2                # Neutral
-  #new_matrix[matrix > 2]  <- 3                # Gain
-  
-  # strategy 2 ================================================
-  #new_matrix[matrix <= 0 & matrix < 1] <- 0    # Deletion
-  #new_matrix[matrix >= 1 & matrix < 2] <- 1    # Loss
-  #new_matrix[matrix == 2] <- 2                 # Neutral
-  #new_matrix[matrix > 2 & matrix <= 3]  <- 3   # Gain
-  #new_matrix[matrix > 3] <- 4                  # Amplification
-  
-  # strategy 3 ================================================
-  new_matrix[matrix <= 0 & matrix < 1] <- 0    # Deletion
-  new_matrix[matrix >= 1 & matrix < 2] <- 1    # Loss
-  new_matrix[matrix == 2] <- 2                 # Neutral
-  new_matrix[matrix > 2 & matrix <= 3]  <- 3   # Gain
-  new_matrix[matrix > 3 & matrix <= 4] <-  4   # Amplification
-  new_matrix[matrix > 4] <-  5                 # Deep Amplification
+  # Able to handles non-integer CNV values
+  new_matrix[matrix >= 0 & matrix < 1] <- 0       # Total Loss (0)
+  new_matrix[matrix >= 1 & matrix < 2] <- 1       # Loss (0 to 1)
+  new_matrix[matrix == 2] <- 2                    # Neutral (1 to 2, or exactly 2)
+  new_matrix[matrix > 2 & matrix <= 3] <- 3       # Gain (2 to 3)
+  new_matrix[matrix > 3 & matrix <= 4] <- 4       # Amplification (3 to 4)
+  new_matrix[matrix > 4] <- 5                     # High Amplification (> 4)
   
   dimnames(new_matrix) <- dimnames(matrix)
-  
+
   return(new_matrix)
 }
 
@@ -272,7 +261,7 @@ pqArm_file.cen <- function(FILE)
   # Locked variable
   sexchromosome <- getOption("sexchromosome")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
 
   if (FILE == "hg38" | FILE == "hg19" | FILE == "mm10" | FILE == "mm39") {
     filename <- paste0(FILE, "_cytoBand.txt.gz")
@@ -287,12 +276,14 @@ pqArm_file.cen <- function(FILE)
   nums <- as.numeric(gsub("chr", "", vec)[grepl("\\d", vec)])
   nums <- paste0("chr", nums[order(nums)])
   Levels <- c(nums, vec[!grepl("\\d", vec)])
+  
   x <- x %>%
        dplyr::mutate(cen_category = paste0(.data$chr, .data$gieStain)) %>%
        dplyr::group_by(.data$cen_category) %>%
        dplyr::summarise(Start = min(.data$ChromStart),
                         End  = max(.data$ChromEnd)) %>%
        as.data.frame()
+  
   x <- x %>%
        dplyr::filter(.data$cen_category %in% paste0(rep(Levels,each = 2), 
                                                     c("acen","gvar"))) %>%
@@ -309,9 +300,8 @@ pqArm_file.cen <- function(FILE)
     rows_to_remove <- grepl("chrX|chrY|chrM", x$chr)
     x <- x[!rows_to_remove, ]
   }
-
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(x)
 }
 
@@ -341,7 +331,7 @@ pqArm_clustering <- function(matrix, Label)
   # Locked variable
   sexchromosome <- getOption("sexchromosome")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   cluster <- sapply(1:ncol(matrix), function(x) {
     paste(matrix[, x], collapse = "_")
@@ -351,7 +341,7 @@ pqArm_clustering <- function(matrix, Label)
                             cluster = Label)
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(cluster)
 }
 
@@ -369,11 +359,11 @@ pqArm_clustering <- function(matrix, Label)
 #'
 #' @return A data frame summarizing the pqArm clustering step, containing the 
 #'  following columns:
-#'   - `pqArm_pattern`: The identified copy number patterns at the arm level.
-#'   - `pqArm_pattern_cellnum`: The number of cells associated with each pqArm 
-#'                              pattern.
-#'   - `cluster`: The assigned cluster for each pattern.
-#'   - `pqArm_cluster`: The final cluster grouping based on pqArm patterns.
+#'  - `pqArm_pattern`: The identified copy number patterns at the arm level.
+#'  - `pqArm_pattern_cellnum`: The number of cells associated with each pqArm 
+#'                             pattern.
+#'  - `cluster`: The assigned cluster for each pattern.
+#'  - `pqArm_cluster`: The final cluster grouping based on pqArm patterns.
 #'
 NEW_pqArm_clustering_summary <- function(matrix, Label)
 {
@@ -382,7 +372,7 @@ NEW_pqArm_clustering_summary <- function(matrix, Label)
   fucStep <- paste0(" 3.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   cluster_table <- table(matrix$pqArm_pattern) %>%
                    as.data.frame() %>%
@@ -393,14 +383,14 @@ NEW_pqArm_clustering_summary <- function(matrix, Label)
                                                    pqArm_cellnum = Freq)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(cluster_table)
 }
 
 
 #' NEW_pqArm_file.remake
 #'
-#' Extract chromosome arm ranges from UCSC cytoband data; this function processes 
+#' Extract chromosome arm ranges from UCSC cytoband data. This function processes 
 #' a UCSC cytoband file to extract the ranges of chromosome long and short arms, 
 #' excluding the centromere regions.
 #'
@@ -418,7 +408,7 @@ NEW_pqArm_file.remake <- function(FILE) # function 3.4
   fucStep <- paste0(" NEW_pqArm_file.remake_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   supported_genomes <- c("hg38", "hg19", "mm10", "mm39")
   

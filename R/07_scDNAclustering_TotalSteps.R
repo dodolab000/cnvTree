@@ -1,6 +1,6 @@
 #' NEW_pqArmClustering
 #' 
-#' Perform pqArm clustering step in scDNA-seq data clustering Workflow; this 
+#' Perform pqArm clustering step in scDNA-seq data clustering Workflow. This 
 #' function executes the pqArm clustering step in the single-cell DNA sequencing  
 #' (scDNA-seq) data clustering workflow, grouping cells based on chromosomal 
 #' arm-level copy number variations.
@@ -10,29 +10,14 @@
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
 #'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on  
 #'  Giemsa-stained chromosomes. It should include the following columns:
-#'  
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #'
 #' @return A data frame recording the pqArm clustering results for each cell, 
 #'  tracking the clustering history at this stage.
-#'
-#' @examples
-#' \dontrun{
-#' config_path <- "~/cnvTree_040/inst/cnvTree_config.yaml"
-#' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                        input_dir_RNA = config$input_dir_RNA,
-#'                                        RNAdataSource = config$RNAdataSource) 
-#' input_df <- changeFormat(input_dir_DNA = config$input_dir_DNA)
-#' pqArm_result <- NEW_pqArmClustering(input = input_df, 
-#'                                     pqArm_file = config$pqArm_file)
-#' }
-#'
-#' @export
 #'
 NEW_pqArmClustering <- function(input, pqArm_file)
 {
@@ -45,13 +30,13 @@ NEW_pqArmClustering <- function(input, pqArm_file)
   cluster <- getOption("cluster")
   sexchromosome <- getOption("sexchromosome")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   message("=== Step 02: pqArm Clustering ===")
 
   Clustering_output <- data.frame(cluster = cluster, cell = names(input))
   pqArm_result <- NULL
-  
+
   for (Label in unique(Clustering_output$cluster)) {
     ptm <- startTimed("pqArm Clustering ...")
     Smooth_pqCN <- NEW_pqArm_CN(input = input, 
@@ -61,13 +46,11 @@ NEW_pqArmClustering <- function(input, pqArm_file)
     pqArm_cluster <- pqArm_clustering(matrix = Smooth_pqCN, Label = Label)
     pqArm_cluster_summary <- NEW_pqArm_clustering_summary(matrix = pqArm_cluster, 
                                                           Label = Label)
-    #LH_02102025: changed to NEW_pqArm_clustering_summary()
     pqArm_cluster <- merge(pqArm_cluster, pqArm_cluster_summary)
     pqArm_result <- rbind(pqArm_result, pqArm_cluster)
   }
-  
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(pqArm_result)
 }
 
@@ -86,47 +69,28 @@ NEW_pqArmClustering <- function(input, pqArm_file)
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
 #'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
 #'  Giemsa-stained chromosomes. It should include the following columns:
-#'  
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
+#' @param difratio_chr A numeric value defining the threshold for acceptable 
+#'  difference ratios across different chromosomes.
 #'
 #' @return A data frame recording both pqArm clustering and consolidating results 
 #'  for each cell, maintaining the clustering history across steps.
-#'
-#' @examples
-#' \dontrun{
-#' config_path <- "~/cnvTree_040/inst/cnvTree_config.yaml"
-#' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                        input_dir_RNA = config$input_dir_RNA,
-#'                                        RNAdataSource = config$RNAdataSource) 
-#' input_df <- changeFormat(input_dir_DNA = config$input_dir_DNA)
-#' pqArm_result <- NEW_pqArmClustering(input = input_df, 
-#'                                     pqArm_file = config$pqArm_file)
-#' Consolidation_result <- clusterConsolidation(input = input_df, 
-#'                                              pqArm_output = pqArm_result, 
-#'                                              pqArm_file = config$pqArm_file)
-#' }
 #'  
-#' @export
-#'
-clusterConsolidation <- function(input, pqArm_output, pqArm_file)
+clusterConsolidation <- function(input, pqArm_output, pqArm_file, difratio_chr)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 7.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  difratio_chr <- getOption("difratio_chr")
-  
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   message("=== Step 03: Cluster consolidation ===")
-  
+
   Recluster_Output <- NULL
   for(Label in unique(pqArm_output$cluster)) {
     ptm <- startTimed("Consolidating clusters to make cluster bigger ...")
@@ -143,14 +107,12 @@ clusterConsolidation <- function(input, pqArm_output, pqArm_file)
                       pqArm_cluster = pqArm_output, 
                       Cluster = Label, 
                       pqArm_file = pqArm_file)
-      
       pqArm_merge_target <- pqArm_reclusterBy_ratio_target(
                                 pqArm_cluster = pqArm_output,
                                 Cluster = Label, 
                                 pqReclsut_sim = pqArm_dif, 
                                 difratio_chr = difratio_chr)
     }
-
     # is.null(pqArm_merge_target)
     if (is.null(pqArm_merge_target) == FALSE) {
       Recluster_CellID <- pqArm_recluster_result(pqArm_cluster = pqArm_output, 
@@ -165,9 +127,8 @@ clusterConsolidation <- function(input, pqArm_output, pqArm_file)
       Recluster_Output <- rbind(Recluster_Output, Recluster_CellID)
     }
   }
-
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(Recluster_Output)
 }
 
@@ -183,52 +144,37 @@ clusterConsolidation <- function(input, pqArm_output, pqArm_file)
 #'  a single cell.
 #' @param Consolidating_output A data frame recording pqArm clustering and consolidating 
 #'  results for each cell. This table tracks the clustering history up to this stage.
-#'
+#' @param min_cell An integer specifying the minimum cell count required for a 
+#'  cluster to be included in the output.
+#' @param min_cell_subclone Minimum cell count required to define a valid subclone.
+#' @param dif_ratio A numeric value specifying the tolerance threshold for 
+#'   differences in copy number patterns between cells during clustering.
+#' @param overlap_region A numeric value determines how much genomic space is 
+#'   masked when identifying frequent CNV regions.
+#'   
 #' @return A list containing two data frames:
-#'   - `final_cluster_output`: Records the clustering history from the pqArm, 
+#'  - `final_cluster_output`: Records the clustering history from the pqArm, 
 #'  consolidating, and subclustering steps.
-#'   - `Subclone_CN`: Records each subclone's unique chromosome segment template 
+#'  - `Subclone_CN`: Records each subclone's unique chromosome segment template 
 #'  and its copy number. It includes the following columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the segment.
-#'   - `end`: End position of the segment.
-#'   - `region`: The defined region index
-#'   - `Subclone`: Subclone identifier.
-#'   - `CN`: Copy number value of the segment.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the segment.
+#'  - `end`: End position of the segment.
+#'  - `region`: The defined region index
+#'  - `Subclone`: Subclone identifier.
+#'  - `CN`: Copy number value of the segment.
 #'
-#' @examples
-#' \dontrun{
-#' config_path <- "~/cnvTree_040/inst/cnvTree_config.yaml"
-#' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                        input_dir_RNA = config$input_dir_RNA,
-#'                                        RNAdataSource = config$RNAdataSource) 
-#' input_df <- changeFormat(input_dir_DNA = config$input_dir_DNA)
-#' pqArm_result <- NEW_pqArmClustering(input = input_df, 
-#'                                     pqArm_file = config$pqArm_file)
-#' Consolidation_result <- clusterConsolidation(input = input_df, 
-#'                                              pqArm_output = pqArm_result, 
-#'                                              pqArm_file = config$pqArm_file)
-#' Subclone_output <- SubClustering(input = input_df,
-#'                                  Consolidating_output = Consolidation_result)
-#' }
-#'  
-#' @export
-#'
-SubClustering <- function(input, Consolidating_output)
+SubClustering <- function(input, Consolidating_output, min_cell, min_cell_subclone, 
+                          dif_ratio, overlap_region)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 7.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  min_cell <- getOption("min_cell")
-  overlap_region <- getOption("overlap_region")
-  dif_ratio <- getOption("dif_ratio")
   
-  #--------------------- start below ---------------------
-  
+  #---------------------- main code start below ---------------------
+
   message("=== Step 04: Subclustering ===")
   
   Final_output <- list()
@@ -241,9 +187,8 @@ SubClustering <- function(input, Consolidating_output)
   overlap_bp <- round((overlap_region/binsize), digits = 0)
 
   # Select enough cell number Reclusters, avoiding keep filtering
-  # LH: Here determined which reclustered groups are dropped out
   R <- Consolidating_output %>% dplyr::filter(.data$Recluster_cellnum >= min_cell)
-  
+
   for (Recluster_label in unique(R$Recluster_cluster)) {
     message("Subclustering for Recluster ", Recluster_label, " ... \n")
     breakpoints <- collect_cluster_bp(input = input, 
@@ -252,44 +197,44 @@ SubClustering <- function(input, Consolidating_output)
     Cell_num <- R %>% 
                 dplyr::filter(.data$Recluster_cluster == Recluster_label) %>% 
                 dplyr::pull(.data$Recluster_cellnum)
+    
     bp <- output_bp_covers(Template = breakpoints, 
                            binsize = binsize, 
                            overlap = overlap_bp, 
                            # overlap_times = 0.5*cell
                            overlap_times = Cell_num[1] * 0.5)
-    #if (is.null(bp)) { # LH added 122025
-    #  print(paste0("bp is NULL on cluser: ", R$Recluster_label))
-    #  next # LH added 122025
-    #}  #LH added 122025
-    event_region <- bp_events(input = input, Template = bp, binsize = binsize)
+
+    if (is.null(bp)) {
+      message("bp is NULL on cluser: ", Recluster_label)
+      next 
+    }  
+    event_region <- NEW_bp_events(input = input, Template = bp, binsize = binsize)
     consensus_bp_template <- bp_region(event = event_region, binsize = binsize)
-    cell_CNregion <- Region_CN(input = input, 
-                               Reclustering_output = Consolidating_output,
-                               Recluster_label = Recluster_label, 
-                               events = consensus_bp_template)
+    cell_CNregion <- NEW_Region_CN(input = input, 
+                                   Reclustering_output = Consolidating_output,
+                                   Recluster_label = Recluster_label, 
+                                   events = consensus_bp_template)
 
     if (is.null(cell_clustering) == TRUE) {
-      cell_clustering <- Subclone_clustering(CN_incells_input = cell_CNregion, 
-                                             event_region = consensus_bp_template,
-                                             dif_ratio = dif_ratio, 
-                                             Subclone_num = 0)
+      cell_clustering <- NEW_Subclone_clustering(CN_incells_input = cell_CNregion, 
+                                                 event_region = consensus_bp_template,
+                                                 dif_ratio = dif_ratio, 
+                                                 Subclone_num = 0)
     } else {
       Subclone_num = max(Subclone_cluster$Subclone)
-      cell_clustering <- Subclone_clustering(CN_incells_input = cell_CNregion, 
-                                             event_region = consensus_bp_template,
-                                             dif_ratio = dif_ratio, 
-                                             Subclone_num = Subclone_num)
+      cell_clustering <- NEW_Subclone_clustering(CN_incells_input = cell_CNregion, 
+                                                 event_region = consensus_bp_template,
+                                                 dif_ratio = dif_ratio, 
+                                                 Subclone_num = Subclone_num)
     }
     Subclone_cluster <- rbind(Subclone_cluster, cell_clustering)
-
-    # Output: 1. Copy number in each region in each subclone
     s_CN <- Subclone_CNregion(sep_region = consensus_bp_template, 
                               CN_region = cell_CNregion, 
                               each_subclone = cell_clustering,
+                              min_cell_subclone = min_cell_subclone,
                               #Two options:"SubcloneCNVRegion", "SubcloneRegionCN" set
                               #in function 5.7
                               output = "SubcloneRegionCN")
-
     Subclone_CNr <- rbind(Subclone_CNr, s_CN)
   }
   colnames(Subclone_cluster) <- c("Subclone_cluster", "cellID", "Subclone_cellnum")
@@ -299,7 +244,7 @@ SubClustering <- function(input, Consolidating_output)
                                                                Subclone_CN = Subclone_CNr)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(Final_output)
 }
 
@@ -313,62 +258,41 @@ SubClustering <- function(input, Consolidating_output)
 #'
 #' @param input A named list where each element is a `GRanges` object representing 
 #'  a single cell.
+#' @param cnv_ratio_DNA Numeric value between 0 and 1 indicating the minimum  
+#'   coverage ratio threshold required to consider a CNV present 
+#'   (\code{final_cnv = 1}).
+#' @param consecutive_region A numeric value defining the minimum length threshold 
+#'   for filtering copy number variation (CNV) regions.
 #' @param Summary A list containing two data frames:
-#' 
-#'   - `final_cluster_output`: Records the clustering history from the pqArm, 
-#'   consolidating, and subclustering steps.
-#'   - `Subclone_CN`: Records each subclone's unique chromosome segment template 
-#'   and its copy number. It includes the following columns:
-#'     - `chr`: Chromosome name (chr1, chr2, ...).
-#'     - `start`: Start position of the segment.
-#'     - `end`: End position of the segment.
-#'     - `region`: The defined region index
-#'     - `Subclone`: Subclone identifier.
-#'     - `CN`: Copy number value of the segment.
+#'  - `final_cluster_output`: Records the clustering history from the pqArm, 
+#'  consolidating, and subclustering steps.
+#'  - `Subclone_CN`: Records each subclone's unique chromosome segment template 
+#'  and its copy number. It includes the following columns:
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the segment.
+#'. - `end`: End position of the segment.
+#'  - `region`: The defined region index
+#'  - `Subclone`: Subclone identifier.
+#'  - `CN`: Copy number value of the segment.
 #'     
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
 #'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
 #'  Giemsa-stained chromosomes. It should include the following columns:
-#'  
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
-#'   
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #' @param output_dir A character string specifying the directory where the output 
 #'  files will be saved.
-#' @param cellcutoff A numeric value specifying the minimum number of cells required 
-#'  for a cluster to be retained.
+#' @param cellcutoff_DNA A numeric value specifying the minimum number of cells  
+#'  required for a cluster to be retained.
 #'
 #' @return The function generates final clustering results and visualizations, 
 #'  saving them to the specified output directory.
 #' 
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' config_path <- "~/cnvTree_040/inst/cnvTree_config.yaml"
-#' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                        input_dir_RNA = config$input_dir_RNA,
-#'                                        RNAdataSource = config$RNAdataSource) 
-#' input_df <- changeFormat(input_dir_DNA = config$input_dir_DNA)
-#' pqArm_result <- NEW_pqArmClustering(input = input_df, 
-#'                                     pqArm_file = config$pqArm_file)
-#' Consolidation_result <- clusterConsolidation(input = input_df, 
-#'                                              pqArm_output = pqArm_result, 
-#'                                              pqArm_file = config$pqArm_file)
-#' Subclone_output <- SubClustering(input = input_df,
-#'                                  Consolidating_output = Consolidation_result)
-#' DNA_superimpose <- scDNA_Output(input = input_df,
-#'                                 Summary = Subclone_output,
-#'                                 output_dir = config$output_dir,
-#'                                 pqArm_file = config$pqArm_file,
-#'                                 cellcutoff = config$cellcutoff)
-#'  }
-#'
-scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
+scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff_DNA,
+                         cnv_ratio_DNA, consecutive_region)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
@@ -376,14 +300,14 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
   # Locked variable
-  consecutive_region <- getOption("consecutive_region")
   sexchromosome <- getOption("sexchromosome")
   smoothheatmap <- getOption("smoothheatmap")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   message("=== Step 05: Output cnvTree results ===")
-  timestamp <- format(Sys.time(), "%m%d_%H")
+  timestamp <- format(Sys.time(), "%m%d")
+  
   # 1. cellID summary
   filename = paste0("/", timestamp, "_", "cnvTree.scDNAseq_grouping")
   writeOutput(data = Summary$final_cluster_output, 
@@ -396,51 +320,44 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
   writeOutput(data = Summary$Subclone_CN, 
               filename = filename, 
               path = output_dir)
-  message("Output /cnvTree.scDNAseq_SubcloneRegionCN.txt is done.")
 
   # 3. All CNV region in the sample
   CNV_Data <- Total_cnvRegion(input = input, 
                               Template = Summary$Subclone_CN, 
-                              pqArm_file = pqArm_file)
-  
-  if (nrow(CNV_Data) != 0){
+                              pqArm_file = pqArm_file,
+                              consecutive_region = consecutive_region)
+  if (nrow(CNV_Data) != 0) {
     CNV_Data <- cnvRegion.toPQarm(FILE = CNV_Data, pqArm_file = pqArm_file)
     filename = paste0("/", timestamp, "_", "cnvTree.scDNAseq_DefinedCNVregion")
     writeOutput(data = CNV_Data, 
                 filename = filename, 
                 path = output_dir)
     message("Output /cnvTree.scDNAseq_DefinedCNVregion.txt is done.")
-  } else {
-    message("Warning: Based on the length of consecutive_region, 
-             no CNV regions remain in the sample. \n
-             Consider lowering the consecutive_region parameter. \n
-             The file cnvTree.scDNAseq_DefinedCNVregion.txt and 
-             cnvTree.scDNAseq_DefinedCNVregion.txt was not generated.")
-  }
 
-  # 4. DNA superimpose
-  if (nrow(CNV_Data) != 0){
-    DNA_superimpose <- scDNA.superimpose(Template = Summary, DefinedCNVs = CNV_Data)
+    # 4. DNA superimpose
+    DNA_superimpose <- scDNA.superimpose(Template = Summary, 
+                                         DefinedCNVs = CNV_Data,
+                                         cnv_ratio_DNA = cnv_ratio_DNA)
     DNA_superimpose <- scDNA.clustering(Template = DNA_superimpose)
     filename = paste0("/", timestamp, "_", "cnvTree.scDNAseq_DNAcluster")
     writeOutput(data = DNA_superimpose$DNA_cluster, 
                 filename = filename, 
                 path = output_dir)
-    message("Output /cnvTree.scDNAseq_DNAcluster.txt is done.")
   } else {
     message("Warning: Based on the length of consecutive_region, 
              no CNV regions remain in the sample. \n
              Consider lowering the consecutive_region parameter. \n
-             The file cnvTree.scDNAseq_DNAcluster.txt and 
-             cnvTree.scDNAseq_DefinedCNVregion.txt were not generated.")
-  }
+             The file cnvTree.scDNAseq_DefinedCNVregion.txt and 
+             cnvTree.scDNAseq_DNAcluster.txt were not generated.")
+    print(paste0("cnvTree Results saved successfully to", output_dir))
+  } 
 
   # 5. Final cluster heatmap
   FILEname = paste0("/", timestamp, "_", "cnvTree.scDNAseq_Grouping_fig.pdf")
   Totalcluster_pdf(Input = input, 
                    Template = Summary$final_cluster_output,
                    pqArm_file = pqArm_file, 
-                   cellcutoff = cellcutoff, 
+                   cellcutoff_DNA = cellcutoff_DNA, 
                    step = "Subclone",
                    FILEpath = output_dir, 
                    FILEname = FILEname)
@@ -450,15 +367,11 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
   FILEname = paste0("/", timestamp, "_", "cnvTree.scDNAseq_heatmap.png")
   scDNA_CNVpattern(input = input, 
                    final_cluster = Summary$final_cluster_output, 
-                   cellcutoff = cellcutoff,
+                   cellcutoff_DNA = cellcutoff_DNA,
                    pqArm_file = pqArm_file, 
                    FILEpath = output_dir, 
                    FILEname = FILEname)
   message("Output /cnvTree.scDNAseq_heatmap.png is done.")
-
-  print(paste("LH: Result saved to", output_dir))
-  
-  return(DNA_superimpose)
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 }
@@ -466,7 +379,7 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
 
 #' cnvTree_scDNAclustering
 #' 
-#' One-Step scDNA-seq Cell Clustering Pipeline; this function executes the entire 
+#' One-Step scDNA-seq Cell Clustering Pipeline. This function executes the entire 
 #' single-cell DNA sequencing (scDNA-seq) clusteringworkflow in one step, including 
 #' NEW_pqArm_clustering, consolidating, subclustering, and final CNV-based output 
 #' generation.
@@ -476,18 +389,28 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
 #'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
 #'  Giemsa-stained chromosomes. It should include the following columns:
-#'
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
-#'   
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #' @param output_dir A character string specifying the directory where output 
 #'  files will be saved.
-#' @param cellcutoff A numeric value specifying the minimum number of cells required 
+#' @param cellcutoff_DNA A numeric value specifying the minimum number of cells  
 #'  for a cluster to be retained in the final output.
-#'
+#' @param cnv_ratio_DNA Numeric value between 0 and 1 indicating the minimum  
+#'  required coverage ratio threshold required to consider a CNV present 
+#'  (\code{final_cnv = 1}).
+#' @param min_cell An integer specifying the minimum cell count required for a 
+#'  cluster to be included in the output.
+#' @param min_cell_subclone Minimum cell count required to define a valid subclone.
+#' @param difratio_chr A numeric value defining the threshold for acceptable 
+#'  difference ratios across different chromosomes.
+#' @param dif_ratio A numeric value specifying the tolerance threshold for 
+#'  differences in copy number patterns between cells during clustering.
+#' @param overlap_region A numeric value determines how much genomic space is 
+#'  masked when identifying frequent CNV regions.
+#' 
 #' @return The function performs complete clustering and CNV analysis, saving final 
 #'  results and visualizations in the specified output directory.
 #'
@@ -497,35 +420,34 @@ scDNA_Output <- function(input, Summary, pqArm_file, output_dir, cellcutoff)
 #' \dontrun{
 #' config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
 #' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                         input_dir_RNA = config$input_dir_RNA,
-#'                                         RNAdataSource = config$RNAdataSource) 
-#' cnvTree_scDNAclustering(input_dir_DNA = config$input_dir_DNA,
-#'                         output_dir = config$output_dir,
+#'
+#' selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
+#'                                 input_dir_RNA = config$input_dir_RNA)
+#'
+#' cnvTree_scDNAclustering(input_dir_DNA = config$input_dir_DNA, 
 #'                         pqArm_file = config$pqArm_file, 
-#'                         cellcutoff = config$cellcutoff)
+#'                         output_dir = config$output_dir,
+#'                         cellcutoff_DNA = config$cellcutoff_DNA,
+#'                         min_cell = config$min_cell,
+#'                         min_cell_subclone = config$min_cell_subclone,
+#'                         cnv_ratio_DNA = config$cnv_ratio_DNA,
+#'                         consecutive_region = config$consecutive_region,
+#'                         overlap_region = config$overlap_region,
+#'                         difratio_chr = config$difratio_chr,
+#'                         dif_ratio = config$dif_ratio)
 #' }
 #'
-cnvTree_scDNAclustering <- function(input_dir_DNA, 
-                                    pqArm_file, 
-                                    output_dir,
-                                    cellcutoff) 
+cnvTree_scDNAclustering <- function(input_dir_DNA, pqArm_file, output_dir,
+                                    cellcutoff_DNA, cnv_ratio_DNA, overlap_region,
+                                    consecutive_region, min_cell, min_cell_subclone, 
+                                    difratio_chr, dif_ratio) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 7.5_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  difratio_chr <- getOption("difratio_chr")
-  min_cell <- getOption("min_cell")
-  overlap_region <- getOption("overlap_region")
-  dif_ratio <- getOption("dif_ratio")
-  smoothheatmap <- getOption("smoothheatmap")
-  sexchromosome <- getOption("sexchromosome")
-  consecutive_region <- getOption("consecutive_region")
-  
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   # step 00: 
   ptm <- startTimed("Start cnvTree_scDNAclustering...")
@@ -533,20 +455,27 @@ cnvTree_scDNAclustering <- function(input_dir_DNA,
 
   # step 01: pqArm clustering
   pqArm_result <- NEW_pqArmClustering(input = input, pqArm_file = pqArm_file)
-  
+
   # step 02: Re-clustering
   Consolidation_result <- clusterConsolidation(input = input, 
                                                pqArm_output = pqArm_result, 
-                                               pqArm_file = pqArm_file)
+                                               pqArm_file = pqArm_file,
+                                               difratio_chr = difratio_chr)
   # step 03: Subclone clustering
   Subclone_output <- SubClustering(input = input,
-                                   Consolidating_output = Consolidation_result)
+                                   Consolidating_output = Consolidation_result,
+                                   min_cell = min_cell,
+                                   min_cell_subclone = min_cell_subclone,
+                                   dif_ratio = dif_ratio,
+                                   overlap_region = overlap_region)
   # step 04: Output
   scDNA_Output(input = input,
                Summary = Subclone_output,
                output_dir = output_dir,
                pqArm_file = pqArm_file,
-               cellcutoff = cellcutoff) ## LH changed name
+               cellcutoff_DNA = cellcutoff_DNA,
+               cnv_ratio_DNA = cnv_ratio_DNA,
+               consecutive_region = consecutive_region)
   
   endTimed(ptm)
   
@@ -556,27 +485,42 @@ cnvTree_scDNAclustering <- function(input_dir_DNA,
 
 #' cnvTree_scDNAclustering_df
 #' 
-#' One-Step scDNA-seq Cell Clustering Pipeline; this function executes the entire 
+#' One-Step scDNA-seq Cell Clustering Pipeline. This function executes the entire 
 #' single-cell DNA sequencing (scDNA-seq) clustering workflow in one step, including 
 #' pqArm clustering, consolidating, subclustering, and final CNV-based output 
 #' generation.
 #'
+#' @param cores An integer specifying the number of worker cores to use for parallel 
+#'  processing.
 #' @param input_dir_DNA A named list where each element is a `GRanges` object 
-#'   representing a single cell.
+#'  representing a single cell.
+#' @param min_cell An integer specifying the minimum cell count required for a 
+#'  cluster to be included in the output.
+#' @param min_cell_subclone Minimum cell count required to define a valid subclone.
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
-#'   `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
-#'   Giemsa-stained chromosomes. It should include the following columns:
-#'
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
-#'   
+#'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
+#'  Giemsa-stained chromosomes. It should include the following columns:
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #' @param output_dir A character string specifying the directory where output 
-#'   files will be saved.
-#' @param cellcutoff A numeric value specifying the minimum number of cells required 
-#'   for a cluster to be retained in the final output.
+#'  files will be saved.
+#' @param cellcutoff_DNA A numeric value specifying the minimum number of cells  
+#'  required for a cluster to be retained in the final output.
+#' @param cnv_ratio_DNA Numeric value between 0 and 1 indicating the minimum  
+#'  coverage ratio threshold required to consider a CNV present (\code{final_cnv = 1}).
+#' @param consecutive_region A numeric value defining the minimum length threshold 
+#'  for filtering copy number variation (CNV) regions.
+#' @param overlap_region A numeric value determines how much genomic space is 
+#'  masked when identifying frequent CNV regions.
+#' @param difratio_chr A numeric value defining the threshold for acceptable 
+#'  difference ratios across different chromosomes.
+#' @param dif_ratio A numeric value specifying the tolerance threshold for 
+#'  differences in copy number patterns between cells during clustering.
+#' @param overlap_region A numeric value determines how much genomic space is 
+#'  masked when identifying frequent CNV regions.
 #'
 #' @return The function performs complete clustering and CNV analysis, saving final 
 #'   results and visualizations in the specified output directory.
@@ -587,60 +531,65 @@ cnvTree_scDNAclustering <- function(input_dir_DNA,
 #' \dontrun{
 #' config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
 #' config <- read_yaml(config_path)
-#' selected_groups <- run_cnvTree_Pipeline(output_dir = config$output_dir,
-#'                                         input_dir_RNA = config$input_dir_RNA,
-#'                                         RNAdataSource = config$RNAdataSource) 
-#' cnvTree_scDNAclustering_df(input_dir_DNA = config$input_dir_DNA,
-#'                            output_dir = config$output_dir,
+#'
+#' selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
+#'                                 input_dir_RNA = config$input_dir_RNA)
+#'
+#' cnvTree_scDNAclustering_df(cores = config$cores,      
+#'                            input_dir_DNA = config$input_dir_DNA, 
 #'                            pqArm_file = config$pqArm_file, 
-#'                            cellcutoff = config$cellcutoff)
+#'                            output_dir = config$output_dir,
+#'                            cellcutoff_DNA = config$cellcutoff_DNA,
+#'                            min_cell = config$min_cell,
+#'                            min_cell_subclone = config$min_cell_subclone,
+#'                            cnv_ratio_DNA = config$cnv_ratio_DNA,
+#'                            consecutive_region = config$consecutive_region,
+#'                            overlap_region = config$overlap_region,
+#'                            difratio_chr = config$difratio_chr,
+#'                            dif_ratio = config$dif_ratio)
 #' }                         
 #'
-cnvTree_scDNAclustering_df <- function(input_dir_DNA, 
-                                       pqArm_file, 
-                                       output_dir,
-                                       cellcutoff) 
+cnvTree_scDNAclustering_df <- function(input_dir_DNA, pqArm_file, output_dir,
+                                       cellcutoff_DNA, cnv_ratio_DNA, cores,
+                                       min_cell, min_cell_subclone, consecutive_region,
+                                       difratio_chr, dif_ratio, overlap_region) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 7.6_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  difratio_chr <- getOption("difratio_chr")
-  min_cell <- getOption("min_cell")
-  overlap_region <- getOption("overlap_region")
-  dif_ratio <- getOption("dif_ratio")
-  smoothheatmap <- getOption("smoothheatmap")
-  sexchromosome <- getOption("sexchromosome")
-  consecutive_region <- getOption("consecutive_region")
-  cores <- getOption("cores")
-  
-  #--------------------- start below ---------------------
-  
-  message("Start data transform...")
+  #---------------------- main code start below ---------------------
+
   ptm <- startTimed("Start cnvTree_scDNAclustering...")
   # step 00: data transform
-  input_df <- changeFormat(input_dir_DNA = input_dir_DNA)
+  input_df <- changeFormat(input_dir_DNA = input_dir_DNA, cores = cores)
 
   # step 01: pqArm clustering
   pqArm_result <- NEW_pqArmClustering(input = input_df, pqArm_file = pqArm_file)
-  
+
   # step 02: Re-clustering
   Consolidation_result <- clusterConsolidation(input = input_df, 
                                                pqArm_output = pqArm_result, 
-                                               pqArm_file = pqArm_file)
+                                               pqArm_file = pqArm_file,
+                                               difratio_chr = difratio_chr)
   
   # step 03: Subclone clustering
   Subclone_output <- SubClustering(input = input_df,
-                                   Consolidating_output = Consolidation_result)
+                                   Consolidating_output = Consolidation_result,
+                                   min_cell = min_cell,
+                                   min_cell_subclone = min_cell_subclone,
+                                   dif_ratio = dif_ratio,
+                                   overlap_region = overlap_region)
   
   # step 04: Output
   scDNA_Output(input = input_df,
                Summary = Subclone_output,
                output_dir = output_dir,
                pqArm_file = pqArm_file,
-               cellcutoff = cellcutoff)
+               cellcutoff_DNA = cellcutoff_DNA,
+               cnv_ratio_DNA = cnv_ratio_DNA,
+               consecutive_region = consecutive_region)
   
   endTimed(ptm)
   

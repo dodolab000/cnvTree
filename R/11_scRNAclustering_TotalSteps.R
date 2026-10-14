@@ -1,41 +1,41 @@
 #' scRNA_input.infercnv
 #' 
-#' Import and Parse InferCNV Outputs; this function parses InferCNV output 
+#' Import and Parse InferCNV Outputs. This function parses InferCNV output 
 #' directories to extract CNV regions and cell groupings. It is capable of handling 
 #' both single, consolidated output folders and outputs that have been split across 
 #' multiple directories. It also performs a quality control check to ensure there 
 #' are no duplicated `cellID`s across the merged datasets.
 #'
 #' @param input_dir_RNA A character string specifying the main directory path 
-#'   containing the InferCNV output.
+#'  containing the InferCNV output.
 #' @param selected_groups A character vector of group names to retain during 
-#'   parsing.
-#' @param RNAdataSource 
+#'  parsing.
 #'
 #' @return A nested list object containing the parsed InferCNV data. The list 
-#'   contains a `Round_1` element, which holds sub-lists (one per processed 
-#'   file/folder) consisting of:
-#'   \describe{
-#'     \item{cnv_region}{The parsed CNV regions.}
-#'     \item{cnv_grouping}{The parsed cell groupings.}
-#'   }
+#'  contains a `Round_1` element, which holds sub-lists (one per processed 
+#'  file/folder) consisting of:
+#'  \describe{
+#'   \item{cnv_region}{The parsed CNV regions.}
+#'   \item{cnv_grouping}{The parsed cell groupings.}
+#'  }
 #'
-scRNA_input.infercnv <- function(input_dir_RNA, selected_groups, RNAdataSource) 
+scRNA_input.infercnv <- function(input_dir_RNA, selected_groups) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 11.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  # Locked variable
+  RNAdataSource <- getOption("RNAdataSource")
+  
+  #---------------------- main code start below ---------------------
   
   cnv_Output <- NULL
   cnv_region <- infercnv_cnvregion(input_dir_RNA = input_dir_RNA, 
-                                   selected_groups = selected_groups,
-                                   RNAdataSource = RNAdataSource)
+                                   selected_groups = selected_groups)
   cnv_grouping <- infercnv_cnvgrouping(input_dir_RNA = input_dir_RNA, 
-                                       selected_groups = selected_groups,
-                                       RNAdataSource = RNAdataSource)
+                                       selected_groups = selected_groups)
   result_list <- list(cnv_region = cnv_region, 
                       cnv_grouping = cnv_grouping)
   cnv_Output$Round_1 <- result_list 
@@ -49,16 +49,15 @@ scRNA_input.infercnv <- function(input_dir_RNA, selected_groups, RNAdataSource)
     # Check for duplicated cellID in the i-th data frame of merged_cnv_groupings
     dup <- duplicated(merged_cnv_groupings[[i]]$cellID)
     if (any(dup)) {
-      print(paste("LH: duplicated cellID found in index", i)) 
+      print(paste("Duplicated cellID found in index", i)) 
     }
     if (any(duplicated(merged_cnv_groupings[[i]]$cellID))) {
       duplicated_value <- merged_cnv_groupings[[i]]$cellID[duplicated(merged_cnv_groupings[[i]]$cellID)]
       stop(paste("Duplicated cellID in Round", i, ":", duplicated_value))
     }
   }
-  
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(cnv_Output)
 }
 
@@ -75,7 +74,7 @@ scRNA_input.infercnv <- function(input_dir_RNA, selected_groups, RNAdataSource)
 #'  nested list of lists.
 #' @param DeterminedCNVs A data.frame containing the scDNA-seq CNV regions 
 #'  standardized by chromosome and copy number state.
-#' @param cnv_ratio A numeric value defining the parameter filtering scale or  
+#' @param cnv_ratio_RNA A numeric value defining the parameter filtering scale or  
 #'  abundance ratio required to validate a superimposed CNV region call.
 #'
 #' @details 
@@ -87,19 +86,20 @@ scRNA_input.infercnv <- function(input_dir_RNA, selected_groups, RNAdataSource)
 #'   experimental runs or time points), aggregating results by "Round_N".
 #' }
 #' It sequentially calls \code{\link{superimpose.data}} to calculate overlap ratios 
-#' and \code{\link{superimpose.FileLevel}} to expand those calls to a cell-by-CNV matrix.
+#' and \code{\link{superimpose.FileLevel}} to expand those calls to a cell-by-CNV 
+#' matrix.
 #'
 #' @return A named list of data.frames. Each data.frame is a binary matrix where 
 #'   rows are cells and columns are CNV regions.
 #'
-scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio) 
+scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio_RNA) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 11.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   if (length(RNA_output) == 0) {
     message("Please input RNA_output.")
@@ -109,7 +109,7 @@ scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio)
       S_output <- NULL
       RNA_output[[Files]] <- superimpose.data(inputFILE = RNA_output[[Files]],                      
                                               DeterminedCNVs = DeterminedCNVs,
-                                              cnv_ratio = cnv_ratio)
+                                              cnv_ratio_RNA = cnv_ratio_RNA)
       Output <- superimpose.FileLevel(inputFILE = RNA_output[[Files]], 
                                       DeterminedCNVs = DeterminedCNVs)
       S_output <- rbind(S_output, Output)
@@ -118,7 +118,6 @@ scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio)
     S_output <- as.data.frame(S_output)
     superimpose_output[[Folder_name]] = S_output
   }
-
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
   return(superimpose_output)
@@ -139,9 +138,11 @@ scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio)
 #'  files will be saved.
 #' @param DeterminedCNVs A data frame detailing the high-confidence CNV regions. 
 #'  This is passed directly to the `scRNA_CNVpattern()` plotting function.
-#' @param cellcutoffRNA A numeric threshold specifying the minimum number of cells 
+#' @param cellcutoff_DNA A numeric threshold specifying the minimum number of cells 
+#'  required to retain an DNA cluster during the formatting step.
+#' @param cellcutoff_RNA A numeric threshold specifying the minimum number of cells 
 #'  required to retain an RNA cluster during the formatting step.
-#' @param filterZero A logical value (\code{TRUE} or \code{FALSE}). If \code{TRUE},  
+#' @param ZeroCol A logical value (\code{TRUE} or \code{FALSE}). If \code{TRUE},  
 #'  removes columns where the sum of all cell clusters is zero.
 #'   
 #' @return 
@@ -156,49 +157,61 @@ scRNA_superimpose <- function(RNA_output, DeterminedCNVs, cnv_ratio)
 #'    of the CNV patterns.
 #' }
 #'
-scRNA_output <- function(Summary, output_dir, DeterminedCNVs, cellcutoffRNA,
-                         filterZero) 
+scRNA_output <- function(Summary, output_dir, DeterminedCNVs, cellcutoff_DNA,
+                         cellcutoff_RNA, ZeroCol) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 11.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   message("=== Step 05: Output cnvTree scRNA results ===")
-  timestamp <- format(Sys.time(), "%m%d_%H")
+  timestamp <- format(Sys.time(), "%m%d")
   
   # 1. cellID clustering output
   scRNA_grouping <- as.data.frame(Summary$Round_noVoting) %>%
                     tibble::rownames_to_column(var = "cellID")
   filename = paste0("/", timestamp, "_", "cnvTree.scRNAseq_grouping")
   writeOutput(data = scRNA_grouping, filename = filename, path = output_dir)
+  message("Output /cnvTree.scRNAseq_grouping.txt is done.")
   
   # 2. superimpose output
   scRNA_output <- scRNA_output.format(inputFILE = Summary, 
-                                      cellcutoffRNA = cellcutoffRNA,
+                                      cellcutoff_RNA = cellcutoff_RNA,
                                       DeterminedCNVs = DeterminedCNVs,
-                                      filterZero = filterZero)
+                                      ZeroCol = ZeroCol)
   filename = paste0("/", timestamp, "_", "cnvTree.scRNAseq_RNAcluster")
-  writeOutput(data = scRNA_output, filename = filename, path = output_dir)
-  
-  # 3. RNA cnv plot: final votes
-  filename = paste0("/", timestamp, "_", "cnvTree.scRNAseq_Fig_CNVpattern.png")
-  CNVpattern(Input = scRNA_output, 
-             FILEname = filename,
-             FILEpath = output_dir,
-             patternType = "scRNA")
-  
-  # 4. DNA clusters output
-  Data_final_DNA <- scDNA_output.format(inputFILE = output_dir, 
-                                        cellcutoffRNA = cellcutoffRNA,
-                                        filterZero = filterZero)
-  filename = paste0("/", timestamp, "_", "cnvTree.scDNAseq_Fig_CNVpattern.png")
-  CNVpattern(Input = Data_final_DNA, 
-             FILEname = filename,
-             FILEpath = output_dir,
-             patternType = "scDNA")
+  writeOutput(data = scRNA_output$Data_clean, filename = filename, path = output_dir)
+  message("Output /cnvTree.scRNAseq_RNAcluster.txt is done.")
+
+  # check point
+  if (is.null(dim(scRNA_output$Data_clean)) || 
+     (identical(dim(scRNA_output$Data_clean), c(1L, 1L)) && scRNA_output$Data_clean[1, 1] == 0)) {
+    cat("No scRNA CNV is mapped to the DefinedCNVs.\n")
+    stop("Results are storted at: ", config$output_dir, "\n")
+    
+  } else {
+    # 3. DNA clusters output
+    Data_final_DNA <- scDNA_output.format(inputFILE = output_dir, 
+                                          cellcutoff_DNA = cellcutoff_DNA,
+                                          ZeroCol = ZeroCol)
+    filename = paste0("/", timestamp, "_", "cnvTree.scDNAseq_Fig_CNVpattern.png")
+    CNVpattern(Input = Data_final_DNA, 
+               FILEname = filename,
+               FILEpath = output_dir,
+               patternType = "scDNA")
+    message("Output /cnvTree.scDNAseq_Fig_CNVpattern.png is done.")
+    
+    # 4. RNA cnv plot: final votes
+    filename = paste0("/", timestamp, "_", "cnvTree.scRNAseq_Fig_CNVpattern.png")
+    CNVpattern(Input = scRNA_output$Data_final_RNA, 
+               FILEname = filename,
+               FILEpath = output_dir,
+               patternType = "scRNA")
+    message("Output /cnvTree.scRNAseq_Fig_CNVpattern.png is done.")
+  }
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 }
@@ -213,44 +226,58 @@ scRNA_output <- function(Summary, output_dir, DeterminedCNVs, cellcutoffRNA,
 #' generates the final tabular files and heatmap visualizations in the specified 
 #' directory.
 #'
-#' @param input_dir_RNA A character string specifying the main directory path containing the 
-#'  InferCNV outputs.
+#' @param input_dir_RNA A character string specifying the main directory path 
+#'  containing the InferCNV outputs.
 #' @param selected_groups A character vector of group names to retain during the 
 #'  parsing step.
-#' @param output.dir A character string specifying the directory path where the final 
-#'  results (tables and plots) will be saved.
-#' @param DeterminedCNVs A data frame detailing the high-confidence CNV regions (chromosome, 
-#'   copy number state, and cytoband boundaries).
-#' @param cellcutoffRNA A numeric threshold specifying the minimum number of cells 
+#' @param cellcutoff_DNA A numeric threshold specifying the minimum number of cells 
 #'   required to retain an RNA cluster during the formatting step.
-#' @param filterZero A logical value (\code{TRUE} or \code{FALSE}). If \code{TRUE},  
+#' @param output_dir A character string specifying the directory path where the final 
+#'  results (tables and plots) will be saved.
+#' @param cellcutoff_RNA A numeric threshold specifying the minimum number of cells 
+#'   required to retain an RNA cluster during the formatting step.
+#' @param ZeroCol A logical value (\code{TRUE} or \code{FALSE}). If \code{TRUE},  
 #'   removes columns where the sum of all cell clusters is zero.
-#' @param cnv_ratio A numeric value defining the parameter filtering scale or  
+#' @param cnv_ratio_RNA A numeric value defining the parameter filtering scale or  
 #'  abundance ratio required to validate a superimposed CNV region call.
-#' @param RNAdataSource Character. The format type of the RNA data source:
-#'  \itemize{
-#'   \item \code{"1"}: Tabular data file (read via \code{readRDS}).
-#'   \item \code{"2"}: InferCNV output folder (searches for "HMM_CNV_predictions" 
-#'   and "cnv_regions" files).
-#'  }
 #'
 #' @return 
-#' This function does not return an R object to the environment. It acts as an 
-#' orchestrator, executing side effects that save three distinct files (grouping  
-#' data, superimpose data, and a CNV heatmap) directly to the specified `output.dir`.
+#'  This function does not return an R object to the environment. It acts as an 
+#'  orchestrator, executing side effects that save three distinct files (grouping  
+#'  data, superimpose data, and a CNV heatmap) directly to the specified `output.dir`.
 #'
 #' @export
 #' 
+#' @examples
+#' \dontrun{
+#' config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
+#' config <- read_yaml(config_path)
+#'
+#' selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
+#'                                 input_dir_RNA = config$input_dir_RNA)
+#'
+#' cnvTree_scRNAclustering(input_dir_RNA = config$input_dir_RNA,
+#'                         selected_groups = selected,
+#'                         output_dir = config$output_dir,
+#'                         cellcutoff_DNA = config$cellcutoff_DNA,
+#'                         cellcutoff_RNA = config$cellcutoff_RNA,
+#'                         cnv_ratio_RNA = config$cnv_ratio_RNA,
+#'                         ZeroCol = config$ZeroCol)
+#' }          
+#' 
 cnvTree_scRNAclustering <- function(input_dir_RNA, selected_groups, output_dir, 
-                                    cellcutoffRNA, RNAdataSource, cnv_ratio, 
-                                    filterZero) 
+                                    cellcutoff_RNA, ZeroCol, cnv_ratio_RNA,
+                                    cellcutoff_DNA) 
 { 
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 11.4_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  # Locked variable
+  RNAdataSource <- getOption("RNAdataSource")
+  
+  #---------------------- main code start below ---------------------
 
   ptm <- startTimed("Start cnvTree_scRNAclustering...")
   
@@ -258,6 +285,16 @@ cnvTree_scRNAclustering <- function(input_dir_RNA, selected_groups, output_dir,
                            pattern = "DefinedCNVregion.*\\.txt$", 
                            recursive = TRUE, 
                            full.names = TRUE)
+  
+  ckPoint_dna <- list.files(path = output_dir, 
+                            pattern = "scDNAseq_DNAcluster.*\\.txt$", 
+                            recursive = TRUE, 
+                            full.names = TRUE)
+  
+  if (length(ckPoint_dna) == 0) {
+    stop("No CNVs were identified from scDNA_cluster module.\n")
+  }
+  
   if (length(scDNA_file) == 0) {
     stop("Error: No DefinedCNVregion file found")
   } else if (length(scDNA_file) >= 2) {
@@ -267,25 +304,24 @@ cnvTree_scRNAclustering <- function(input_dir_RNA, selected_groups, output_dir,
   Determine_CNVs <- read.table(scDNA_file, header = TRUE)
 
   RNA_output <- scRNA_input.infercnv(input_dir_RNA = input_dir_RNA, 
-                                     selected_groups = selected_groups,
-                                     RNAdataSource = RNAdataSource)
+                                     selected_groups = selected_groups)
 
   Superimpose_output <- scRNA_superimpose(RNA_output = RNA_output, 
                                           DeterminedCNVs = Determine_CNVs,
-                                          cnv_ratio = cnv_ratio)
-
+                                          cnv_ratio_RNA = cnv_ratio_RNA)
   Superimpose_output$Round_noVoting <- Superimpose_output$Round_noVoting %>% 
       mutate(Pattern = apply(., 1, function(row) paste0(row, collapse = "_")))
-    
   scRNA_output(Summary = Superimpose_output, 
                output_dir = output_dir, 
-               cellcutoffRNA = cellcutoffRNA,
+               cellcutoff_RNA = cellcutoff_RNA,
+               cellcutoff_DNA = cellcutoff_DNA,
                DeterminedCNVs = Determine_CNVs,
-               filterZero = filterZero)
+               ZeroCol = ZeroCol)
+
   endTimed(ptm)
-  print(paste("Output directory is set at: ", config$output_dir))
+  message("cnvTree scRNA_Integrage Results are saved to: ", config$output_dir)
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
-  return(Superimpose_output) #LH changed 042026
+
+  return(Superimpose_output)
 }

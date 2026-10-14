@@ -6,64 +6,55 @@
 #' contains the corresponding CNVs.
 #'
 #' @param Template A list containing two data frames:
-#'   - `final_cluster_output`: Records the clustering history from the pqArm, 
-#'   re-clustering, and subclone clustering steps.
-#'   - `Subclone_CN`: Records each subclone's unique chromosome segment template 
-#'   and its copy number. It includes the following columns:
-#'   
+#'  - `final_cluster_output`: Records the clustering history from the pqArm, 
+#'     re-clustering, and subclone clustering steps.
+#'  - `Subclone_CN`: Records each subclone's unique chromosome segment template 
+#'     and its copy number. It includes the following columns:
 #'     - `chr`: Chromosome name (chr1, chr2, ...).
 #'     - `start`: Start position of the segment.
 #'     - `end`: End position of the segment.
 #'     - `region`: The defined region index
 #'     - `Subclone`: Subclone identifier.
 #'     - `CN`: Copy number value of the segment.
-#'     
+#' @param cnv_ratio_DNA Numeric value between 0 and 1 indicating the minimum  
+#'  coverage ratio threshold required to consider a CNV present (\code{final_cnv = 1}).
+#'  
 #' @param DefinedCNVs A data frame containing high-confidence CNV regions, with 
 #'  the following columns:
-#'  
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `CNV_region`: The index of CNV regions.
-#'   - `CN`: Copy number state, categorized as either "amp" (Amplification) or 
-#'           "del" (Deletion).
-#'   - `CNV_start`: Start position of the CNV region.
-#'   - `CNV_end`: End position of the CNV region.
-#'   - `first_band`: Cytoband label of the first affected band.
-#'   - `last_band`: Cytoband label of the last affected band.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `CNV_region`: The index of CNV regions.
+#'  - `CN`: Copy number state, categorized as either "amp" (Amplification) or 
+#'         "del" (Deletion).
+#'  - `CNV_start`: Start position of the CNV region.
+#'  - `CNV_end`: End position of the CNV region.
+#'  - `first_band`: Cytoband label of the first affected band.
+#'  - `last_band`: Cytoband label of the last affected band.
 #'
 #' @return The function returns the updated `Template` list with an additional table:
-#'   - `superimpose`: A data frame where `Template$Subclone_CN` overlaps with 
-#'   `DefinedCNVs`, calculating whether each cluster contains or lacks the 
-#'   corresponding CNV.
+#'  - `superimpose`: A data frame where `Template$Subclone_CN` overlaps with 
+#'  `DefinedCNVs`, calculating whether each cluster contains or lacks the 
+#'  corresponding CNV.
 #'
-scDNA.superimpose <- function(Template, DefinedCNVs)
+scDNA.superimpose <- function(Template, DefinedCNVs, cnv_ratio_DNA)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 6.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
-  
+  #---------------------- main code start below ---------------------
+
   Groups <- unique(Template$Subclone_CN$Subclone)
   Template$Subclone_CN$CNV_state <- Template$Subclone_CN$CN
   # CN only seperate in 3 types: del/neu/amp
   Template$Subclone_CN$CN = dplyr::case_when(
-  Template$Subclone_CN$CN <  2 ~ "del",
-  Template$Subclone_CN$CN == 2 ~ "neu",
-  Template$Subclone_CN$CN >  2 ~ "amp"
-    
-  #Template$Subclone_CN$CN < 1  ~ "del",
-  #Template$Subclone_CN$CN < 2  ~ "los",
-  #Template$Subclone_CN$CN == 2 ~ "neu",
-  #Template$Subclone_CN$CN <= 3 ~ "gan",
-  #Template$Subclone_CN$CN > 3  ~ "amp"
-  )
-  superimpose <- NULL
+    Template$Subclone_CN$CN <  2 ~ "del",
+    Template$Subclone_CN$CN == 2 ~ "neu",
+    Template$Subclone_CN$CN >  2 ~ "amp")
   
+  superimpose <- NULL
   for (groups in 1:length(Groups)) {
     intersection <- NULL
-    # check defined CNVs in each group
-    
     CNVs <- Template$Subclone_CN %>%
             dplyr::filter(.data$Subclone %in% c(Groups[groups]),
                           .data$chr %in% c(unique(DefinedCNVs$chr)),
@@ -102,14 +93,14 @@ scDNA.superimpose <- function(Template, DefinedCNVs)
                                  CNV_range = .data$CNV_end - .data$CNV_start + 1,
                                  cnv_range = ifelse(is.na(.data$cnv_range) == TRUE, 
                                                     0, .data$cnv_range),
-                                 cnv_ratio = .data$cnv_range /.data$CNV_range,
-                                 final_cnv = ifelse(.data$cnv_ratio >= 0.5, 1, 0)) %>%
+                                 Cnv_ratio = .data$cnv_range /.data$CNV_range,
+                                 final_cnv = ifelse(.data$Cnv_ratio >= cnv_ratio_DNA, 1, 0)) %>%
                                  rbind(.data, superimpose)
   }
   Template$superimpose <- superimpose
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(Template)
 }
 
@@ -123,15 +114,14 @@ scDNA.superimpose <- function(Template, DefinedCNVs)
 #' indicating whether each cluster contains the corresponding CNVs.
 #'
 #' @param Template A data frame where `Template$Subclone_CN` records each subclone's 
-#'  unique chromosome segment template and its copy number.
-#'  
-#'     It includes the following columns:
-#'     - `chr`: Chromosome name (chr1, chr2, ...).
-#'     - `start`: Start position of the segment.
-#'     - `end`: End position of the segment.
-#'     - `region`: The defined region index
-#'     - `Subclone`: Subclone identifier.
-#'     - `CN`: Copy number value of the segment.
+#'  unique chromosome segment template and its copy number. It includes the following 
+#'  columns:
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the segment.
+#'  - `end`: End position of the segment.
+#'  - `region`: The defined region index
+#'  - `Subclone`: Subclone identifier.
+#'  - `CN`: Copy number value of the segment.
 #'
 #' @return The function updates `Template` by adding a new matrix, `Template$DNA_cluster`, 
 #'  which includes:
@@ -147,13 +137,13 @@ scDNA.clustering <- function(Template)
   fucStep <- paste0(" 6.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
-  
+  #---------------------- main code start below ---------------------
+
   cnv_region <- unique(Template$superimpose$CNV_region)
   cnv_region <- paste0("CNV", cnv_region)
   Subclone_ss <- unique(Template$superimpose$Subclone)
-  
   cnv_matrix <- matrix(nrow = length(Subclone_ss), ncol = length(cnv_region) + 2)
+
   for (subclone in 1:length(Subclone_ss)) {
     Cell_num <- Template$final_cluster_output %>%
                 dplyr::filter(.data$Subclone_cluster %in% Subclone_ss[subclone]) %>%
@@ -162,15 +152,14 @@ scDNA.clustering <- function(Template)
             dplyr::filter(.data$Subclone %in% Subclone_ss[subclone]) %>%
             dplyr::select(.data$final_cnv) %>%
             dplyr::pull()
-    
     cnv_matrix[subclone, ] <-c(CNVs, Subclone_ss[subclone], Cell_num[1])
   }
   colnames(cnv_matrix) <- c(cnv_region, "DNA_cluster", "DNA_Cellnum")
   rownames(cnv_matrix) <- seq_len(nrow(cnv_matrix))
   Template$DNA_cluster <- cnv_matrix
-
-  DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
   
+  DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
+
   return(Template)
 }
 
@@ -190,14 +179,13 @@ scDNA.clustering <- function(Template)
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
 #'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
 #'  Giemsa-stained chromosomes. It should include the following columns:
-#'  
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #'   
-#' @param cellcutoff A numeric value defining the minimum number of cells required 
+#' @param cellcutoff_DNA A numeric value defining the minimum number of cells required 
 #'  for a cluster to be included.
 #' @param step A character string specifying the name of the output clustering 
 #'  step to select. Valid options are "pqArm," "Recluster," and "Subclone." 
@@ -208,7 +196,7 @@ scDNA.clustering <- function(Template)
 #'
 #' @return A copy number profile visualization saved as a PDF file.
 #'
-Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff, 
+Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff_DNA, 
                              step = "Subclone", FILEname, FILEpath)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
@@ -219,13 +207,13 @@ Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff,
   # Locked variable
   sexchromosome <- getOption("sexchromosome")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   cluster_name = paste0(step, "_cluster")
   cellnum_name = paste0(step, "_cellnum")
   Cluster_No <- Totalcluster_Cluster_No(Template = Template, 
                                         cellnum_name = cellnum_name, 
-                                        cellcutoff = cellcutoff, 
+                                        cellcutoff_DNA = cellcutoff_DNA, 
                                         cluster_name = cluster_name)
   Fig_seq <- list()
   height_ratio <- NULL
@@ -255,22 +243,20 @@ Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff,
                                       sexchromosome = sexchromosome)
   }
   Label <- paste0(Cluster_No, " (n = ", cellnum_list, ")")
-  
   combine_plot <- ggpubr::ggarrange(plotlist = Fig_seq,
                                     ncol = 1,
                                     labels = Label,
                                     common.legend = FALSE,
                                     legend = "right",
-                                    hjust  = 0.8,
+                                    hjust = 0.8,
                                     align = "v",
                                     font.label = list(size = 45, face = "bold", 
                                                       color ="black"),
                                     heights = c(height_ratio)) +
   ggplot2::theme(plot.margin = ggplot2::margin(2,2,2,8, "cm"))
-  
   ggplot2::ggsave(combine_plot,
                   filename = paste0(FILEpath, FILEname),
-                  height = (300*sum(height_ratio) + 800*length(height_ratio)),
+                  height = (300*sum(height_ratio) + 800 * length(height_ratio)),
                   width = 13000,
                   units = "px",
                   limitsize = FALSE)
@@ -290,7 +276,7 @@ Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff,
 #'  history at each step.
 #' @param cellnum_name A character string specifying the column in `Template` that 
 #'  records the number of cells in each cluster.
-#' @param cellcutoff A numeric value defining the minimum number of cells required 
+#' @param cellcutoff_DNA A numeric value defining the minimum number of cells required 
 #'  for a cluster to be included.
 #' @param cluster_name A character string specifying the column in `Template` that 
 #'  records the clustering result to be filtered.
@@ -298,22 +284,23 @@ Totalcluster_pdf <- function(Input, Template, pqArm_file, cellcutoff,
 #' @return A character vector containing cluster names that meet the specified 
 #'  cell number threshold.
 #'
-Totalcluster_Cluster_No <- function(Template, cellnum_name, cellcutoff, cluster_name)
+Totalcluster_Cluster_No <- function(Template, cellnum_name, cellcutoff_DNA, 
+                                    cluster_name)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 6.3.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
-  
+  #---------------------- main code start below ---------------------
+
   Cluster_No <- Template %>%
-                dplyr::filter(.data[[cellnum_name]] >= cellcutoff) %>%
+                dplyr::filter(.data[[cellnum_name]] >= cellcutoff_DNA) %>%
                 dplyr::pull(.data[[cluster_name]])
   Cluster_No <- sort(unique(Cluster_No))
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(Cluster_No)
 }
 
@@ -332,7 +319,8 @@ Totalcluster_Cluster_No <- function(Template, cellnum_name, cellcutoff, cluster_
 #' @param k An integer specifying the designated cluster for which cell IDs should 
 #'  be retrieved.
 #'
-#' @return A character vector containing the cell IDs that belong to the designated cluster.
+#' @return A character vector containing the cell IDs that belong to the designated 
+#'  cluster.
 #'
 Totalcluster_SS <- function(Template, cluster_name, k)
 {
@@ -341,14 +329,14 @@ Totalcluster_SS <- function(Template, cluster_name, k)
   fucStep <- paste0(" 6.3.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   SS <- Template %>%
         dplyr::filter(.data[[cluster_name]] == k) %>%
         dplyr::pull(.data$cellID)
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(SS)
 }
 
@@ -365,12 +353,12 @@ Totalcluster_SS <- function(Template, cluster_name, k)
 #' @param cellID A character vector specifying the `cellID`s of the cells for 
 #'  heatmap plotting.
 #' @param pqArm_file A table for cytoband information seen on Giemsa-stained chromosomes.
-#' It should include the following columns:
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
+#'  It should include the following columns:
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
 #' @param sexchromosome Logical. If `TRUE`, the plot includes copy number information 
 #'  for sex chromosomes. Defaults to `FALSE`.
 #'
@@ -383,7 +371,7 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
   fucStep <- paste0(" 6.3.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
 
   # import CN template and total cell copy number matrix
   CN_bins_template <- NEW_CN_template(input = Input, pqArm_file = pqArm_file)
@@ -405,7 +393,7 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
   }
 
   if (cnvTree_msg == TRUE) {
-    print(paste0("LH: start looping...6.3.3.1_cnvTree_", cnvTree_v_num))
+    print(paste0("start looping...6.3.3.1_cnvTree_", cnvTree_v_num))
   }
 
   # Import copy number data
@@ -414,18 +402,6 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
                                                                  index = i, 
                                                                  CN_chr_template = CN_chr_template))
   mat_input <- dplyr::bind_rows(mat_input)
-
-  # chrX, chrY in plotting output is optional
-  #if (sexchromosome == FALSE) {
-  #  CN_bins_template <- CN_bins_template %>% 
-  #                      dplyr::filter(!.data$chr %in% c("chrX", "chrY"))
-  #  CN_chr_template <- CN_chr_template %>% 
-  #                     dplyr::filter(!.data$chr %in% c("chrX", "chrY"))
-  #  mat_input <- mat_input %>% 
-  #               dplyr::filter(!.data$chr %in% c("chrX", "chrY"))
-  #}
-  # mat_input$CN[which(mat_input$CN>5)] <- 5
-
   # plot chr site
   Chr_tmp <- CN_chr_template %>%
              dplyr::mutate(chr = sub("^chr", "", .data$chr),
@@ -443,13 +419,11 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
   height = dplyr::case_when(numofcell > 60 ~ numofcell,
                             numofcell <= 60 & numofcell > 10 ~ 50,
                             numofcell <= 10 ~ 30)
-
   segment_length = dplyr::case_when(numofcell > 201 ~ 2,
                                     numofcell >= 101 & numofcell <= 200 ~ 4,
                                     numofcell >= 41 & numofcell <= 100 ~ 10,
                                     numofcell >= 21 & numofcell <= 40 ~ 15,
                                     numofcell >= 1 & numofcell <= 20 ~ 20)
-
   PlotCN_heatmap <-
     ggplot2::ggplot(mat_input) +
     ggplot2::geom_segment(ggplot2::aes(x = .data$X_cum_start, 
@@ -481,7 +455,7 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
     ggplot2::theme_void()
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(PlotCN_heatmap)
 }
 
@@ -505,6 +479,8 @@ GenomeHeatmap <- function(Input, cellID, pqArm_file, sexchromosome)
 #'
 segment_transform <- function(data, index, CN_chr_template) # Function 6.3.3.1 #
 {
+  #---------------------- main code start below ---------------------
+  
   D1 <- as.data.frame(data$bins) %>% 
         dplyr::mutate(segment = rep(seq_along(rle(.data$copy.number)$values), 
                                               rle(.data$copy.number)$lengths)) %>%
@@ -524,7 +500,7 @@ segment_transform <- function(data, index, CN_chr_template) # Function 6.3.3.1 #
                              X_cum_end = .data$end + .data$X_cum,
                              Y_cum_start = index - 1,
                              Y_cum_end = index - 1)
-  
+
   return(D3)
 }
 
@@ -549,7 +525,7 @@ generate_dynamic_colormap <- function(data_matrix)
   fucStep <- paste0(" 6.4.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   unique_values <- sort(unique(as.vector(data_matrix)))
   
@@ -575,7 +551,7 @@ generate_dynamic_colormap <- function(data_matrix)
   color_mapping <- stats::setNames(all_colors, c(values_below_6, values_above_5))
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-  
+
   return(color_mapping)
 }
 
@@ -591,16 +567,14 @@ generate_dynamic_colormap <- function(data_matrix)
 #'  a single cell.
 #' @param final_cluster A data frame containing high-confidence CNV regions, with 
 #'  the following columns:
-#'  
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `CNV_region`: The index of CNV regions.
-#'   - `CN`: Copy number state, categorized as either "amp" (Amplification) or "del" (Deletion).
-#'   - `CNV_start`: Start position of the CNV region.
-#'   - `CNV_end`: End position of the CNV region.
-#'   - `first_band`: Cytoband label of the first affected band.
-#'   - `last_band`: Cytoband label of the last affected band.
-#'   
-#' @param cellcutoff A numeric value defining the minimum number of cells required 
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `CNV_region`: The index of CNV regions.
+#'  - `CN`: Copy number state, categorized as either "amp" (Amplification) or "del" (Deletion).
+#'  - `CNV_start`: Start position of the CNV region.
+#'  - `CNV_end`: End position of the CNV region.
+#'  - `first_band`: Cytoband label of the first affected band.
+#'  - `last_band`: Cytoband label of the last affected band.
+#' @param cellcutoff_DNA A numeric value defining the minimum number of cells required 
 #'  for a cluster to be included.
 #' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, `mm10`, `mm39`.
 #'  Or a filepath of a table for cytoband information seen on Giemsa-stained chromosomes.
@@ -616,7 +590,7 @@ generate_dynamic_colormap <- function(data_matrix)
 #'
 #' @return A PNG file containing a heatmap of defined CNVs across clusters.
 #'
-scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file, 
+scDNA_CNVpattern <- function(input, final_cluster, cellcutoff_DNA, pqArm_file, 
                              FILEpath, FILEname)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
@@ -628,7 +602,7 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
   smoothheatmap <- getOption("smoothheatmap")
   sexchromosome <- getOption("sexchromosome")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   if (smoothheatmap == TRUE) {
     # bins template
@@ -648,15 +622,16 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
                                                               chr_df[, 3] + 1))
     chr_window = EnrichedHeatmap::makeWindows(chr_gr, w = 1e6, short.keep = T)
     mtch = as.data.frame(IRanges::findOverlaps(chr_window, bins_window, type = "any"))
+
     # 先平均出每個bin 的copy number ，得到average sequence
-    final_cluster <- final_cluster %>% dplyr::filter(.data$Subclone_cellnum >= cellcutoff)
+    final_cluster <- final_cluster %>% dplyr::filter(.data$Subclone_cellnum >= cellcutoff_DNA)
     final_cluster <- final_cluster %>%
                      tidyr::unite("Subclone_no", Subclone_cluster, Subclone_cellnum, 
                                   sep = " (n = ", remove = FALSE) %>%
                      mutate(Subclone_no = paste0(Subclone_no, ")"))
     subclone_no <- unique(final_cluster$Subclone_cluster)
     num_mat <- NULL
-    
+
     for (i in 1:length(subclone_no)) {
       cellID <- final_cluster %>% 
                 dplyr::filter(.data$Subclone_cluster %in% subclone_no[i]) %>% 
@@ -671,7 +646,6 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
                                                                      na.rm = TRUE), 
                                                                      digits = 0))
       smooth_CN[as.numeric(recalculateCN$queryHits)] <- recalculateCN$mean_copy_number
-      
       if (is.null(num_mat)) {
         num_mat <- smooth_CN
         num_mat <- as.matrix(num_mat) 
@@ -705,7 +679,7 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
     }
   } else {
     # without smoothing step
-    final_cluster <- final_cluster %>% dplyr::filter(.data$Subclone_cellnum >= cellcutoff)
+    final_cluster <- final_cluster %>% dplyr::filter(.data$Subclone_cellnum >= cellcutoff_DNA)
     final_cluster <- final_cluster %>%
                      tidyr::unite("Subclone_no", Subclone_cluster, 
                                   Subclone_cellnum, sep = " (n =", remove = FALSE) %>%
@@ -735,8 +709,7 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
                 dplyr::select(.data$seqnames, .data$start) %>%
                 dplyr::arrange(.data$seqnames, .data$start)
     # Superimpose chromosomal definitions conditionally based on incoming structures
-    num_mat <- cbind(chr_sort, num_mat) %>%
-               dplyr::arrange(.data$seqnames, .data$start)
+    num_mat <- cbind(chr_sort, num_mat) %>% dplyr::arrange(.data$seqnames, .data$start)
     chr <- as.character(num_mat$seqnames)
     
     if (sexchromosome == FALSE) {
@@ -787,8 +760,7 @@ scDNA_CNVpattern <- function(input, final_cluster, cellcutoff, pqArm_file,
                                       column_title_side = "bottom",
                                       column_title_gp = grid::gpar(fontsize = 25),
                                       border = TRUE,
-                                      column_gap = ggplot2::unit(0, "points")
-  )
+                                      column_gap = ggplot2::unit(0, "points"))
   ComplexHeatmap::draw(Oncoscan,
                        annotation_legend_side = "right",
                        annotation_legend_list = list(heatmap_legend),

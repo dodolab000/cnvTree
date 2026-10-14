@@ -1,10 +1,19 @@
-pqArm_file: hg38
-input_dir_DNA: ~/NCI_N87/scDNA/NCIN87_bins_copynumber.rds
-input_dir_RNA: ~/NCI_N87/scRNA/241107_NCIN87_Infercnv/NCIN87_Allcell_refNA_R00005_W151_pval005
-output_dir: ~/Result_0812
-RNAdataSource: '2'
-cellcutoff: 2.0
-cellcutoffRNA: 2.0
-cnv_ratio: 0.9
-filterZero: no
-output_folder: ~/Result_cnvTree
+pqArm_file: 'hg38' # 'hg38', 'hg19', 'hg39' or 'mm10'
+input_dir_DNA: 'path/to/your/scDNA_file' 
+input_dir_RNA: 'path/to/your/scRNA_file' 
+output_dir: 'path/to/your/output_directory'
+cores: 4
+DNAdatasource: '2' # 1. dataframe 2. Aneufinder
+cellcutoff_DNA: 5 # D = 5
+cellcutoff_RNA: 5 # D = 5
+min_cell: 5 # D = 5
+min_cell_subclone: 5 # D = 5
+consecutive_region: 1.0e+07 # D = 1.0e+07
+overlap_region: 1.0e+07 # D = 1.0e+07
+dif_ratio: 0.2 # D = 0.2
+difratio_chr: 0.3 # D = 0.3
+cnv_ratio_DNA: 0.5 # D = 0.5
+cnv_ratio_RNA: 0.5 # D = 0.5
+ZeroCol: FALSE # D = FALSE
+cost_calculate: '2nodeMul' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
+treeType: 'RNA' # 'RNA', 'DNARNA'

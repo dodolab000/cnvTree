@@ -1,9 +1,11 @@
 #' changeFormat
 #'
-#' Convert copy number data to GRanges Format; this function reads a `.rds` file 
+#' Convert copy number data to GRanges Format. This function reads a `.rds` file 
 #' or `.txt` file containing copy number variation (CNV) data and converts it into 
 #' a list of `GRanges` objects, where each element corresponds to a single cell.
 #'
+#' @param cores An integer specifying the number of worker cores to use for parallel 
+#'  processing.
 #' @param input_dir_DNA A `.rds` file or `.txt` file containing a data frame with 
 #'  the following required columns:
 #'  
@@ -16,9 +18,7 @@
 #' @return A named list where each element represents a cell, containing its 
 #'  corresponding genomic segments as a `GRanges` object.
 #'
-#' @export
-#'
-changeFormat <- function(input_dir_DNA) 
+changeFormat <- function(input_dir_DNA, cores) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
@@ -27,9 +27,8 @@ changeFormat <- function(input_dir_DNA)
   
   # Locked variable
   sexchromosome <- getOption("sexchromosome")
-  cores <- getOption("cores")
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   if (endsWith(input_dir_DNA, ".rds") == TRUE) {
     Bin_CN <- readRDS(input_dir_DNA)
@@ -66,13 +65,8 @@ changeFormat <- function(input_dir_DNA)
   template_gr <- GenomicRanges::makeGRangesFromDataFrame(template_data, 
                                                          keep.extra.columns = FALSE)
   NewFormat <- list()
-
   NewFormat <- lapply(seq_along(Bin_CN_list), function(i) {
-  
-    # NewFormat <- future.apply::future_lapply(seq_along(Bin_CN_list), function(i) { # LH
-    # Extract current Bin_CN_list element
     cell_data <- Bin_CN_list[[i]]
-    # Copy the template GRanges object and add "copy.number"
     Bins <- template_gr
     S4Vectors::mcols(Bins)$copy.number <- cell_data$copy.number
     # Compute breakpoints
@@ -90,7 +84,6 @@ changeFormat <- function(input_dir_DNA)
                                                        end = breakpoints$end),
                              copy.number = breakpoints$copy.number)
     }
-    # Return a list with the new format
     list(ID = names(Bin_CN_list)[i], bins = Bins, breakpoints = Breakpoints)
   })
   names(NewFormat) <- names(Bin_CN_list)
@@ -115,8 +108,8 @@ changeFormat <- function(input_dir_DNA)
 #'  to be included in the matrix.
 #'
 #' @return An integer matrix:
-#'   - Columns represent the selected `cellID`s.
-#'   - Rows represent genomic regions, separated into fixed bins.
+#'  - Columns represent the selected `cellID`s.
+#'  - Rows represent genomic regions, separated into fixed bins.
 #'
 NEW_CN_seq <- function(input, Template)
 {
@@ -125,7 +118,7 @@ NEW_CN_seq <- function(input, Template)
   fucStep <- paste0(" 1.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   c <- lapply(Template, function(i) {
     obj <- input[[i]]
@@ -148,40 +141,44 @@ NEW_CN_seq <- function(input, Template)
 
 #' run_cnvTree_Pipeline
 #' 
-#' Run the cnvTree Setup Pipeline; this initializes the output environment, sets 
-#' up necessary folder structures for RNA data, and extracts the available cell 
-#' groups/types for selection.
+#' This initializes the output environment, sets up necessary folder structures
+#' for RNA data, and extracts the available cell groups/types for selection.
 #' 
-#' @param config List. Internal configuration parameters containing versioning 
-#'   and message flags (e.g., \code{config$input_dir_RNA}).
 #' @param output_dir Character. Path to the directory where results and output 
-#'   folders will be created and saved.
+#'  folders will be created and saved.
 #' @param input_dir_RNA Character. Path to the input single-cell RNA-seq 
-#'   data directory (e.g., inferCNV output folder).
-#' @param RNAdataSource Character. The format or source type of the RNA data 
-#'   (e.g., "dataframe" or "inferCNV").
+#'  data directory (e.g., inferCNV output folder).
 #'
 #' @return A character vector or list of identified cell groups/types extracted 
-#'   by \code{select_groups()} for the next steps of the pipeline.
+#'  by \code{select_groups()} for the next steps of the pipeline.
 #' 
-#' @export 
+#' @export
 #' 
-run_cnvTree_Pipeline <- function(output_dir, input_dir_RNA, RNAdataSource) 
+run_cnvTree_Pipeline <- function(output_dir, input_dir_RNA) 
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 1.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  # Locked variable
+  RNAdataSource <- getOption("RNAdataSource")
+
+  #---------------------- main code start below ---------------------
   
   # Ensure the output directory exists
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
     message("Created output folder: ", output_dir)
   }
-  selected_groups <- select_groups(input_dir_RNA = input_dir_RNA, 
-                                   RNAdataSource = RNAdataSource)
+  
+  if (!is.null(input_dir_RNA)) {
+    selected_groups <- select_groups(input_dir_RNA = input_dir_RNA, 
+                                     RNAdataSource = RNAdataSource)
+  } else {
+    selected_groups <- NULL
+    message("No RNA directory provided. Skipping RNA data integration.")
+  }
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
   
@@ -196,25 +193,21 @@ run_cnvTree_Pipeline <- function(output_dir, input_dir_RNA, RNAdataSource)
 #' and provides an interactive menu for the user to select one or more groups for 
 #' downstream analysis.
 #'
-#' @param input_dir_RNA A character string specifying the path to the directory containing 
-#'   the CNV results (specifically looking for files containing "cnv_regions" 
-#'   and "HMM_CNV_predictions").
+#' User Flow:
+#' 1. Select an initial group. If '0' is pressed, the function execution stops.
+#' 2. A repeat loop allows for multiple additional selections.
+#'
+#' @param input_dir_RNA A character string specifying the path to the directory  
+#'   containing the CNV results (specifically looking for files containing 
+#'   "cnv_regions" and "HMM_CNV_predictions").
 #' @param RNAdataSource Integer or Character. The type of RNA data source being used:
 #'   \itemize{
 #'     \item \code{1}: Tabular data file / matrix structure.
 #'     \item \code{2}: InferCNV output folder structure.
 #'   }
 #'
-#' @details 
-#' The function identifies the relevant file in the directory, reads the 
-#' `cell_group_name` column, and strips suffixes (anything after the first dot) 
-#' to identify unique groups. It then opens an interactive menu. 
-#' 
-#' User Flow:
-#' 1. Select an initial group. If '0' is pressed, the function execution stops.
-#' 2. A repeat loop allows for multiple additional selections.
-#'
-#' @return A character vector containing the unique names of the selected cell groups.
+#' @return A character vector containing the unique names of the selected cell 
+#' groups.
 #' 
 select_groups <- function(input_dir_RNA, RNAdataSource)
 {
@@ -223,9 +216,9 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
   fucStep <- paste0(" 1.2.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
 
-  if (RNAdataSource == "1") {
+  if (RNAdataSource == "1") { # dataframe input
     print("datatype: dataframe")
     ext <- tools::file_ext(input_dir_RNA)
     if (ext == "rds") {
@@ -235,16 +228,15 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
     } else {
       stop("Unsupported format. Please provide a .rds, .txt, or .tsv file.")
     }
-  } else if (RNAdataSource == "2") { # InferCNV data
+    
+  } else if (RNAdataSource == "2") { # InferCNV input
     print("datatype: InferCNV files")
-    #======= new =======
     matching_files <- list.files(path = input_dir_RNA, 
                                  pattern = "HMM_CNV_predictions.*cnv_regions", 
                                  recursive = TRUE, full.names = TRUE)
     if (length(matching_files) == 0) {
       stop("No matching CNV prediction files found in: ", input_dir_RNA)
     }
-    
     if (length(matching_files) > 1) {
       # Count path separators (handles both '/' and '\')
       file_depths <- lengths(gregexpr("[/\\\\]", matching_files))
@@ -254,40 +246,23 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
     }
     cnv_regions <- read.table(RNA_file, sep = "\t", quote = "", comment.char = "", 
                               fill = TRUE, header = TRUE)
-    
     cat("Successfully loaded file from:\n", RNA_file, "\n")
-    
-    #======= new =======
-    #======= old =======
-    #all_dirs <- list.dirs(path = input_dir_RNA, recursive = TRUE, full.names = TRUE)
-    #dir_depths <- lengths(gregexpr("/", all_dirs))
-    #max_depth <- max(dir_depths)
-    #folders_pth <- all_dirs[dir_depths == (max_depth - 1)][1]
-    #File <- list.files(folders_pth, full.names = TRUE)
-    #File <- File[grepl("cnv_regions", File) & 
-    #               grepl("HMM_CNV_predictions", File)]
-    #cnv_regions <- read.table(File, sep = "\t", quote = "", comment.char = "", 
-    #                          fill = TRUE, header = TRUE)
-    #======= old =======
+
   } else {
-    stop("Please set `config$RNAdataSource = 1 or 2`")
+    stop("Please set `config$RNAdataSource = `1` or `2`")
   }
   cell_group_names <- cnv_regions$cell_group_name
   extracted_cell_group_names <- unique(sub("\\..*", "", cell_group_names))
   
-  cat (
-    "\ncnvTree Selection:",
-    "  1. Enter a group number to select it.",
-    "  2. Enter 0 to finish.",
-    "  [Constraint]: Do not select the group used as the InferCNV reference.\n", 
-    sep = "\n"
-  )
+  cat ("\ncnvTree Selection:",
+       "  1. Enter a group number to select it.",
+       "  2. Enter 0 to finish.",
+       "  [Constraint]: Do not select the group used as the InferCNV reference.\n", 
+       sep = "\n")
   
   menu_choices <- c(extracted_cell_group_names)
-  # This is the index number R assigns to exit string
   exit_index <- length(menu_choices) 
-  choice_index_0 <- menu(choices = menu_choices, 
-                         title = "Select a group index:")
+  choice_index_0 <- menu(choices = menu_choices, title = "Select a group index:")
   
   if (choice_index_0 == 0) {
     stop("No group selected, stopping.") 
@@ -299,13 +274,10 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
     choice_index <- menu(
       choices = menu_choices, 
       title = "cnvTree: Choose more groups or enter 0 to finish.")
-    # Exit condition triggered by native 0 or selecting our appended "88" option
     if (choice_index == 0) {
       DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
       break 
     } else if (choice_index %in% choice_index_0) {
-      # CRITICAL FIX: Wrapped unique() in sort() because identical(c(2,1), c(1,2)) is FALSE.
-      # Sorting ensures it successfully catches when all groups are selected.
       if (!identical(sort(unique(choice_index_0)), seq_len(n))) {
         print("cnvTree: Group already selected. Select another group, or enter 0 to finish.") 
       } else {
@@ -316,7 +288,6 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
       print(paste0("Group selected: ", extracted_cell_group_names[choice_index])) 
     }
   }
-  # Return unique selected groups
   selected_groups <- unique(extracted_cell_group_names[choice_index_0])
   message("Final selected groups: ")
   message(paste0(selected_groups, collapse = ", "))
@@ -329,7 +300,7 @@ select_groups <- function(input_dir_RNA, RNAdataSource)
 
 #' ProcessHmmList
 #'
-#' Load and Standardize AneuFinder HMM Objects; This function imports AneuFinder 
+#' Load and Standardize AneuFinder HMM Objects. This function imports AneuFinder 
 #' Hidden Markov Model (HMM) files from a specified directory. It ensures that 
 #' the list names and internal object IDs match the file basenames rather than 
 #' absolute system paths.
@@ -346,7 +317,7 @@ ProcessHmmList <- function(input_dir_DNA)
   fucStep <- paste0(" 1.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   files <- list.files(input_dir_DNA, full.names = TRUE)
   if (length(files) == 0) stop ("No hmm files found at: ", input_dir_DNA)
@@ -357,9 +328,140 @@ ProcessHmmList <- function(input_dir_DNA)
   for (i in seq_along(hmms)) {
     hmms[[i]]$ID <- names(hmms)[i]
   }
-  
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
   
   return(hmms)
 }
 
+
+#' cnvTree: Run Complete Single-Cell DNA and RNA CNV Tree Pipeline. 
+#'
+#' This function orchestrates the end-to-end CNV tree pipeline for single-cell data. 
+#' It runs pipeline initialization, processes single-cell DNA clustering based on 
+#' the selected data source (`"1"` or `"2"`), performs single-cell RNA clustering 
+#' if DNA clusters are successfully detected, constructs and evaluates CNV trees 
+#' (either RNA-only or combined DNA-RNA structures), exports the final clustering 
+#' and visualization results, and saves the pipeline configuration log.
+#'
+#' @param cores An integer specifying the number of worker cores to use for parallel 
+#'  processing.
+#' @param DNAdatasource A character string or numeric value specifying the DNA data 
+#'  source mode (`"1"` or `"2"`).
+#' @param pqArm_file A character string specifying the file path for chromosome 
+#'  arm (p/q arm) definitions.
+#' @param output_dir A character string specifying the directory where the output 
+#'  files will be saved.
+#' @param input_dir_DNA A string specifying the directory containing the \code{.RData} 
+#'  or \code{.rds} HMM files (typically the 'method-edivisive' output folder).
+#' @param input_dir_RNA A character string specifying the main directory path 
+#'  containing the InferCNV outputs.
+#' @param cnv_ratio_DNA Numeric value between 0 and 1 indicating the minimum  
+#'  coverage ratio threshold required to consider a CNV present 
+#'  (\code{final_cnv = 1}).
+#' @param cnv_ratio_RNA A numeric value defining the parameter filtering scale or  
+#'  abundance ratio required to validate a superimposed CNV region call.
+#' @param cellcutoff_DNA A numeric value defining the minimum number of cells required 
+#'  for a cluster to be included.
+#' @param cellcutoff_RNA An integer specifying the minimum number of single cells  
+#'  required to keep a specific CNV pattern.
+#' @param min_cell An integer specifying the minimum cell count required for a 
+#'  cluster to be included in the output.
+#' @param min_cell_subclone Minimum cell count required to define a valid subclone.
+#' @param consecutive_region A numeric value defining the minimum length threshold 
+#'  for filtering copy number variation (CNV) regions.
+#' @param ZeroCol A logical value (\code{TRUE} or \code{FALSE}). If \code{TRUE},  
+#'  removes columns where the sum of all cell clusters is zero.
+#' @param cost_calculate A character string specifying the cost calculation method 
+#'  for tree edge weights.
+#' @param treeType A character string specifying the tree construction type, 
+#'  either `"RNA"` or `"DNARNA"`.
+#' @param difratio_chr A numeric value defining the threshold for acceptable 
+#'  difference ratios across different chromosomes.
+#' @param dif_ratio A numeric value specifying the tolerance threshold for 
+#'  differences in copy number patterns between cells during clustering.
+#' @param overlap_region A numeric value determines how much genomic space is 
+#'  masked when identifying frequent CNV regions.
+#'
+#' @return No return value.
+#'
+#' @export
+#' 
+cnvTree <- function(cores, DNAdatasource, pqArm_file, output_dir, input_dir_DNA, 
+                    input_dir_RNA, cnv_ratio_DNA, cnv_ratio_RNA, cellcutoff_DNA, 
+                    cellcutoff_RNA, min_cell, min_cell_subclone, consecutive_region, 
+                    overlap_region, ZeroCol, difratio_chr, dif_ratio, treeType,
+                    cost_calculate) 
+{
+  cnvTree_v_num <- getOption("cnvTree_v_num")
+  cnvTree_msg   <- getOption("cnvTree_msg")
+  fucStep <- paste0(" 1.5_cnvTree_", cnvTree_v_num)
+  DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
+  
+  #---------------------- main code start below ---------------------
+
+  selected <- run_cnvTree_Pipeline(output_dir = output_dir,
+                                   input_dir_RNA = input_dir_RNA)
+
+  if (DNAdatasource == "1") {
+    cnvTree_scDNAclustering_df(cores = cores,
+                               input_dir_DNA = input_dir_DNA,
+                               cnv_ratio_DNA = cnv_ratio_DNA,
+                               output_dir = output_dir,
+                               pqArm_file = pqArm_file, 
+                               cellcutoff = cellcutoff_DNA,
+                               min_cell = min_cell,
+                               min_cell_subclone = min_cell_subclone,
+                               consecutive_region = consecutive_region,
+                               overlap_region = overlap_region,
+                               difratio_chr = difratio_chr,
+                               dif_ratio = dif_ratio)
+  } else if (DNAdatasource == "2") {
+    cnvTree_scDNAclustering(input_dir_DNA = input_dir_DNA,
+                            output_dir = output_dir,
+                            pqArm_file = pqArm_file, 
+                            cellcutoff_DNA = cellcutoff_DNA,
+                            cnv_ratio_DNA = cnv_ratio_DNA,
+                            min_cell = min_cell,
+                            min_cell_subclone = min_cell_subclone,
+                            consecutive_region = consecutive_region,
+                            overlap_region = overlap_region,
+                            difratio_chr = difratio_chr,
+                            dif_ratio = dif_ratio)
+  }
+  ckPoint_dna <- list.files(path = output_dir, 
+                            pattern = "scDNAseq_DNAcluster.*\\.txt$", 
+                            recursive = TRUE, 
+                            full.names = TRUE)
+  if (length(ckPoint_dna) == 0) {
+    cat("No CNVs were identified.\n")
+    stop("cnvTree scDNA_cluster Results are saved to: ", config$output_dir)
+  } else {
+    cnvTree_scRNAclustering(input_dir_RNA = input_dir_RNA,
+                            selected_groups = selected,
+                            output_dir = output_dir,
+                            cellcutoff_DNA = cellcutoff_DNA,
+                            cellcutoff_RNA = cellcutoff_RNA,
+                            cnv_ratio_RNA = cnv_ratio_RNA,
+                            ZeroCol = ZeroCol)
+    ckPoint_rna <- list.files(path = output_dir, 
+                              pattern = "scRNAseq_RNAcluster.*\\.txt$", 
+                              recursive = TRUE, 
+                              full.names = TRUE)
+    
+    ck <- read.table(ckPoint_rna[1], header = TRUE, sep = "")
+    if (nrow(ck) == 1L && sum(as.numeric(ck[1, 1:(ncol(ck) - 2)])) == 0) {
+      cat("cnvTree scRNA_Integrage Results are saved to: ", config$output_dir)
+      stop("CNV patterns are too simplified to generate a tree.\n")
+    } else {
+      generate_Tree(output_dir = config$output_dir,
+                    treeType = config$treeType,
+                    cost_calculate = config$cost_calculate,
+                    selected = selected[1])
+    }
+  }
+  config_txt_path <- file.path(output_dir, "cnvTree_config.txt")
+  config_lines <- capture.output(str(config))
+  writeLines(c("=== CNVTree Configuration ===", "", config_lines), config_txt_path)
+  
+  DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
+}

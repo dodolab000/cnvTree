@@ -1,16 +1,7 @@
-cnvTree_v_num: v041
+cnvTree_v_num: v050
 cnvTree_msg: yes
-difratio_chr: 0.3
-dif_ratio: 0.2
-cluster: 1.0
-min_cell: 2.0
-min_cell_subclone: 2
-overlap_region: 1.0e+07
-consecutive_region: 1.0e+07
-core: 1.0
+min_cell: 2L 
+cluster: 1L
 sexchromosome: no
 smoothheatmap: yes
-msg: yes
-v_num: v041
-multiFiles: no
-sexchromosome_plot: no
+RNAdataSource: "2" # "1: dataframe" or 2: inferCNV"

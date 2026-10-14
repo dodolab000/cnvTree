@@ -14,14 +14,6 @@
 #'
 #' @return A list containing:
 #'   - `ordered_indices`: The ordered indices of cells based on hierarchical clustering.
-#'   
-#' @examples
-#' \dontrun{
-#' file_path <- system.file("extdata", "example_data.rds", package = "cnvTree")
-#' Example_data <- changeFormat(file = file_path, core = 4)
-#' Clustering_Result <- clusterbyHMM(input = Example_data, 
-#'                                   selected = names(Example_data)[1:10])
-#' }
 #'
 clusterbyHMM <- function(input, selected, exclude.regions = NULL)
 {
@@ -30,7 +22,7 @@ clusterbyHMM <- function(input, selected, exclude.regions = NULL)
   fucStep <- paste0(" 2.0_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   message("Checking column 'copy.number'  ...")
   hmms <- input[selected]
@@ -102,7 +94,7 @@ CutTree_final <- function(input, selected)
   fucStep <- paste0(" CutTree_final_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   # 分群的原始檔，後面要用他作為基底
   message("Clustering and Data processing ...")
@@ -147,7 +139,7 @@ CutTree <- function(input, Template, Cluster_label)
   fucStep <- paste0(" CutTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   # selected.files建立
   # Cluster_label: Clust_cuttree$cluster中的分群數字
@@ -231,7 +223,7 @@ Cluster_sim <- function(Template, SimCells, Cluster_label)
   fucStep <- paste0(" Cluster_sim_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   # cat("Calculating cell similarity in Cluster ",  Cluster_label, " ...\n")
   selected <- Template %>% 

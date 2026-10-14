@@ -13,13 +13,13 @@
 #'
 #' @return A data frame containing breakpoint sites with the following columns:
 #' 
-#'   - `seqnames`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the breakpoint.
-#'   - `end`: End position of the breakpoint.
-#'   - `width`: Width of the fixed-bin size in the genomic regions.
-#'   - `strand`: Strand information (`+` or `-`).
-#'   - `copy.number`: Left copy number value at the breakpoint.
-#'   - `cellID`: Identifier of the corresponding cell.
+#'  - `seqnames`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the breakpoint.
+#'  - `end`: End position of the breakpoint.
+#'  - `width`: Width of the fixed-bin size in the genomic regions.
+#'  - `strand`: Strand information (`+` or `-`).
+#'  - `copy.number`: Left copy number value at the breakpoint.
+#'  - `cellID`: Identifier of the corresponding cell.
 #'
 collect_cluster_bp <- function(input, Clustering_output, Recluster_label)
 {
@@ -28,7 +28,7 @@ collect_cluster_bp <- function(input, Clustering_output, Recluster_label)
   fucStep <- paste0(" 5.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
 
   selected_files <- Clustering_output %>%
                     dplyr::filter(.data$Recluster_cluster %in% Recluster_label) %>%
@@ -38,8 +38,6 @@ collect_cluster_bp <- function(input, Clustering_output, Recluster_label)
   breakpoints_list <- lapply(selected_files, function(i) {
     input[[i]]$breakpoints %>% as.data.frame() %>% dplyr::mutate(cellID = i)
   })
-  
-  # Combine all the results using bind_rows, which is more efficient than rbind in a loop
   breakpoints <- dplyr::bind_rows(breakpoints_list)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
@@ -58,32 +56,33 @@ collect_cluster_bp <- function(input, Clustering_output, Recluster_label)
 #'
 #' @param Template A data frame containing breakpoint sites with the following 
 #'   columns:
-#'   - `seqnames`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the breakpoint.
-#'   - `end`: End position of the breakpoint.
-#'   - `width`: Width of the fixed-bin size in the genomic regions.
-#'   - `strand`: Strand information (`+` or `-`).
-#'   - `copy.number`: Left copy number value at the breakpoint.
-#'   - `cellID`: Identifier of the corresponding cell.
+#'   
+#'  - `seqnames`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the breakpoint.
+#'  - `end`: End position of the breakpoint.
+#'  - `width`: Width of the fixed-bin size in the genomic regions.
+#'  - `strand`: Strand information (`+` or `-`).
+#'  - `copy.number`: Left copy number value at the breakpoint.
+#'  - `cellID`: Identifier of the corresponding cell.
 #'   
 #' @param binsize An integer specifying the fixed-bin size, referring to the copy 
-#'   number variation calling result where the genomic region is split into bins.
+#'  number variation calling result where the genomic region is split into bins.
 #' @param overlap An integer defining the copy number frequently changed regions.
 #' @param overlap_times A numeric value used as a filtering criterion for  
-#'   significant breakpoints in event region calculation. The default value is  
-#'   set as half the number of cells in the cluster.
+#'  significant breakpoints in event region calculation. The default value is  
+#'  set as half the number of cells in the cluster.
 #'
 #' @return A data frame recording significant breakpoints with the following 
-#'   columns:
+#'  columns:
 #'   
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `site`: Breakpoints position, calculated as a normalized genomic coordinate 
-#'      index rounded by binsize.
-#'   - `times`: The frequency of breakpoints occurrence.
-#'   - `events`: Number of distinct breakpoints events.
-#'   - `cover_nums`: Number of breakpoints covered within the specified range.
-#'   - `cover_times`: Number of times a breakpoints is covered.
-#'   - `binsize`: Fixed-bin size used in the calculation.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `site`: Breakpoints position, calculated as a normalized genomic coordinate 
+#'    index rounded by binsize.
+#'  - `times`: The frequency of breakpoints occurrence.
+#'  - `events`: Number of distinct breakpoints events.
+#'  - `cover_nums`: Number of breakpoints covered within the specified range.
+#'  - `cover_times`: Number of times a breakpoints is covered.
+#'  - `binsize`: Fixed-bin size used in the calculation.
 #'
 output_bp_covers <- function(Template, binsize, overlap, overlap_times)
 {
@@ -92,7 +91,7 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
   fucStep <- paste0(" 5.2_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   chr <- unique(Template$seqnames) %>%
          factor(levels = levels(factor(Template$seqnames))) %>%
@@ -108,7 +107,7 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
     chr_unique <- Template %>%
                   dplyr::filter(.data$seqnames %in% k) %>%
                   # 將位點(site)從10**6轉換成bins的格式
-                  dplyr::mutate(site = round(.data$start/binsize, digits = 0)) %>%
+                  dplyr::mutate(site = round(.data$end/binsize, digits = 0)) %>% 
                   dplyr::group_by(.data$site) %>%
                   dplyr::summarise(times = dplyr::n(), .groups = 'drop') %>%
                   dplyr::mutate(site = as.numeric(as.character(.data$site)))
@@ -116,7 +115,7 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
     # 將其中點的數值做延伸並合併
     site_vec <- chr_unique$site
     cover_matrix <- sapply(site_vec, function(x) {
-      cover_label <- site_vec %in% ((x-overlap):(x+overlap))
+      cover_label <- site_vec %in% ((x - overlap):(x + overlap))
       cover_nums <- sum(cover_label)
       cover_times <- sum(chr_unique$times[cover_label])
       return(c(cover_nums, cover_times))
@@ -135,9 +134,8 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
       # 初始化bp_group
       bp_group <- data.frame()
       count <- 1
-
       while (length(bp_order) > 0) {
-        select_label <- which(bp_order %in% ((bp_order[1]-overlap):(bp_order[1]+overlap))) #overlap; not 750;LH
+        select_label <- which(bp_order %in% ((bp_order[1] - overlap):(bp_order[1] + overlap)))
         bp_group_1 <- data.frame(breakpoints = bp_order[select_label], events = count)
         bp_group <- dplyr::bind_rows(bp_group, bp_group_1)
         bp_order <- bp_order[-select_label]
@@ -145,16 +143,14 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
       }
       # 將結果存入列表
       bp_group <- bp_group %>% dplyr::mutate(chr = k)
-      bp_site_select <- merge(chr_unique, bp_group, 
-                              by.x = "site", by.y = "breakpoints")
+      bp_site_select <- merge(chr_unique, bp_group, by.x = "site", by.y = "breakpoints")
       return(bp_site_select) 
     }
   })
-  #=============== NEW =================#
-  bp2 <- dplyr::bind_rows(bp_list)  ## LH: line added 12292025
-  print(!(all(dim(bp2) == c(0, 0))))  # LH: added 122025; FALSE if bp2 = 0x0
+  bp2 <- dplyr::bind_rows(bp_list)
+  print(!(all(dim(bp2) == c(0, 0)))) 
   
-  if (!(all(dim(bp2) == c(0, 0))) == TRUE) { ## LH: line added 12292025
+  if (!(all(dim(bp2) == c(0, 0))) == TRUE) {
     bp <- dplyr::bind_rows(bp_list) %>%
           dplyr::select(.data$chr, 
                         .data$site, 
@@ -164,20 +160,17 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
                         .data$cover_times) %>%
           dplyr::mutate(binsize = binsize)
   } else {
-    bp <- NULL  ## LH: line added 12292025
+    bp <- NULL
   }
-  #=============== NEW =================#
-  
   cat("All the breakpoints in same Recluster group of cells ... \n")
   
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
-  
   return(bp)
 }
 
 
-#' bp_events
+#' NEW_bp_events 
 #' 
 #' Use the distribution of breakpoints to define the events. Define copy number 
 #' variation hotspots based on significant breakpoints; this function identifies 
@@ -185,76 +178,74 @@ output_bp_covers <- function(Template, binsize, overlap, overlap_times)
 #' on a list of significant breakpoints.
 #'
 #' @param input A named list where each element is a `GRanges` object representing 
-#'   a single cell.
+#'  a single cell.
 #' @param Template A data frame recording significant breakpoints with the following 
-#'   columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `site`: breakpoint position.
-#'   - `times`: The frequency of breakpoint occurrence.
-#'   - `events`: Number of distinct breakpoint events.
-#'   - `cover_nums`: Number of breakpoints covered within the specified range.
-#'   - `cover_times`: Number of times a breakpoint is covered.
-#'   - `binsize`: Fixed-bin size used in the calculation.
+#'  columns:
+#'  
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `site`: breakpoint position.
+#'  - `times`: The frequency of breakpoint occurrence.
+#'  - `events`: Number of distinct breakpoint events.
+#'  - `cover_nums`: Number of breakpoints covered within the specified range.
+#'  - `cover_times`: Number of times a breakpoint is covered.
+#'  - `binsize`: Fixed-bin size used in the calculation.
 #'   
 #' @param binsize An integer specifying the fixed-bin size, referring to the 
-#'   copy number variation calling result where the genomic region is split into 
-#'   bins.
+#'  copy number variation calling result where the genomic region is split into 
+#'  bins.
 #'
 #' @return A data frame listing CNV events for each chromosome, identifying  
-#'   regions where copy number variations frequently occur.
+#'  regions where copy number variations frequently occur.
 #'
-bp_events <- function(input, Template, binsize)
+NEW_bp_events <- function(input, Template, binsize)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 5.3_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
-  # set chr levels
+  Template <- as.data.frame(Template)
+  # Extract numeric chromosomes (e.g., chr1, chr2, chr3...)
   vec <- unique(Template$chr)
-  nums <- as.numeric(gsub("chr", "", vec)[grepl("\\d", vec)])
-  nums <- paste0("chr", nums[order(nums)])
-  # Levels <- c(nums, vec[!grepl("\\d", vec)])
-  Template$chr <- factor(Template$chr, levels = nums) # 更加安全的做法是直接轉換因子
-  # binsize <- Template$binsize[1]
-  event_region <- NULL
-    event_region_list <- lapply(nums, function(k) {
-    event <- unique(Template$events[which(Template$chr == k)])
-    # 使用 lapply 來處理每個 event
-    event_region_1 <- lapply(event, function(i) {
-      Template %>% dplyr::filter(.data$chr == k, .data$events == i) %>%
-                   dplyr::summarise(event = i,
-                                    cross_bp = dplyr::n(),
-                                    min_site = min(.data$site, na.rm = TRUE),
-                                    max_site = max(.data$site, na.rm = TRUE),
-                                    chr = k)
-    })
-    # 使用 bind_rows 合併 event
-    dplyr::bind_rows(event_region_1)
-  })
-  # 合併所有的 chr 結果
-  event_region <- dplyr::bind_rows(event_region_list) %>%
+  num_vec <- vec[grep("\\d", vec)]
+  nums <- as.numeric(gsub("chr", "", num_vec))
+  sorted_nums <- paste0("chr", nums[order(nums)])
+  
+  # Extract non-numeric chromosomes (e.g., chrX, chrY, chrM...)
+  vec <- trimws(gsub("[\r\n]", "", vec))
+  non_nums <- vec[grep("\\d", vec, invert = TRUE)]
+  custom_sex_order <- c("chrX", "chrY", "chrM")
+  sorted_non_nums <- custom_sex_order[custom_sex_order %in% non_nums]
+  
+  # Combine both and convert to factor
+  correct_levels <- c(sorted_nums, sorted_non_nums)
+  Template$chr <- factor(Template$chr, levels = correct_levels)
+  
+  event_region <- Template %>%
+                  dplyr::filter(!is.na(.data$events) & !is.na(.data$chr)) %>%
+                  dplyr::group_by(.data$chr, .data$events) %>%
+                  dplyr::summarise(cross_bp = dplyr::n(),
+                                   min_site = min(.data$site, na.rm = TRUE),
+                                   max_site = max(.data$site, na.rm = TRUE),
+                                                  .groups = "drop") %>%
                   dplyr::arrange(.data$chr, .data$min_site) %>%
-                  # 使用row_number()確保event重新編號
-                  dplyr::mutate(event = dplyr::row_number()) 
-  desired_order <- c("chr", "event", "cross_bp", "min_site", "max_site")
-  event_region <- event_region[ ,desired_order] %>%
-                  dplyr::mutate(chr = factor(.data$chr, levels = nums)) %>%
-                  dplyr::arrange(.data$chr)
+                  dplyr::mutate(event = dplyr::row_number()) %>%
+                  dplyr::select(chr, event, cross_bp, min_site, max_site)
+
   event_region <- event_region.bin(input = input, Template = event_region)
   event_region$binsize <- binsize
+
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
- 
   return(event_region)
 }
 
 
 #' event_region.bin
 #' 
-#' Convert event region data to continuous bin-level sites; this function transforms 
+#' Convert event region data to continuous bin-level sites. This function transforms 
 #' event region data from discrete chromosome sites into continuous bin-level 
 #' sites for further analysis.
 #'
@@ -264,9 +255,9 @@ bp_events <- function(input, Template, binsize)
 #'  each chromosome. This table will be updated with bin-level site information.
 #'
 #' @return A data frame `Template` with additional columns:
-#'   - `bins_level_min`: The minimum bin-level position for each event region.
-#'   - `bins_level_max`: The maximum bin-level position for each event region.
-#'   These columns enable further bin-level calculations.
+#'  - `bins_level_min`: The minimum bin-level position for each event region.
+#'  - `bins_level_max`: The maximum bin-level position for each event region.
+#'  These columns enable further bin-level calculations.
 #'
 event_region.bin <- function(input, Template)
 {
@@ -275,11 +266,9 @@ event_region.bin <- function(input, Template)
   fucStep <- paste0(" 5.3.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
-  bins_num <- input[[1]]$bins@seqnames %>%
-              table() %>%
-              data.frame() %>%
+  bins_num <- input[[1]]$bins@seqnames %>% table() %>% data.frame() %>%
               stats::setNames(c("chr", "Freq"))
   bins_num$CDF_start <- sapply(1:nrow(bins_num), function(x) {
     sum(bins_num$Freq[1:x-1])
@@ -297,14 +286,13 @@ event_region.bin <- function(input, Template)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
-  
   return(Template)
 }
 
 
 #' bp_region
 #' 
-#' Define segments in continuous bin-level sites based on event regions; this 
+#' Define segments in continuous bin-level sites based on event regions. This 
 #' function segments the genome into continuous bin-level regions based on 
 #' an event region template.
 #'
@@ -323,7 +311,7 @@ bp_region <- function(event, binsize)
   fucStep <- paste0(" 5.4_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   # binsize = event$binsize[1]
   region <- data.frame()
@@ -358,15 +346,15 @@ bp_region <- function(event, binsize)
           end <- c(event_R$bp_start[j])
           event_binstart <- c(event_binstart, event_R$CDF_start[j])
           event_binend <- c(event_binend, event_R$bins_level_min[j])
-        } else if (j == (nrow(event_R)+1)){
-          start <- c(start, event_R$bp_end[j-1])
-          end <- c(end, event_R$Freq[j-1]*binsize)
-          event_binstart <- c(event_binstart, event_R$bins_level_max[j-1])
-          event_binend <- c(event_binend, event_R$CDF_end[j-1])
+        } else if (j == (nrow(event_R) + 1)){
+          start <- c(start, event_R$bp_end[j - 1])
+          end <- c(end, event_R$Freq[j-1] * binsize)
+          event_binstart <- c(event_binstart, event_R$bins_level_max[j - 1])
+          event_binend <- c(event_binend, event_R$CDF_end[j - 1])
         } else {
-          start <- c(start, event_R$bp_end[j-1])
+          start <- c(start, event_R$bp_end[j - 1])
           end <- c(end, event_R$bp_start[j])
-          event_binstart <- c(event_binstart, event_R$bins_level_max[j-1])
+          event_binstart <- c(event_binstart, event_R$bins_level_max[j - 1])
           event_binend <- c(event_binend, event_R$bins_level_min[j])
         }
       }
@@ -374,17 +362,17 @@ bp_region <- function(event, binsize)
                  tibble::add_row() %>%
                  dplyr::mutate(chr = dplyr::lag(.data$chr, 
                                                 default = gdata::first(as.character(.data$chr))),
-                               CDF_start = dplyr::lag(.data$CDF_start , 
+                               CDF_start = dplyr::lag(.data$CDF_start, 
                                                       default = gdata::first(.data$CDF_start)),
-                               CDF_end = dplyr::lag(.data$CDF_end , 
+                               CDF_end = dplyr::lag(.data$CDF_end, 
                                                     default = gdata::first(.data$CDF_end)),
                                region = 1:dplyr::n(),
                                start = start,
                                end = end,
                                event_binstart = event_binstart,
                                event_binend = event_binend,
-                               region_size = (.data$event_binend-.data$event_binstart+1),
-                               region_ratio = (.data$region_size/(.data$CDF_end-.data$CDF_start+1))) %>%
+                               region_size = (.data$event_binend - .data$event_binstart + 1),
+                               region_ratio = (.data$region_size/(.data$CDF_end-.data$CDF_start + 1))) %>%
                  dplyr::select(.data$chr, .data$start, .data$end, .data$region, 
                                .data$region_size, .data$region_ratio, 
                                .data$event_binstart, .data$event_binend)
@@ -398,12 +386,11 @@ bp_region <- function(event, binsize)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
   
-  
   return(region)
 }
 
 
-#' Region_CN
+#' NEW_Region_CN
 #' 
 #' Smooth CN based on defined regions. Calculate copy number for chromosome segments
 #' ;this function calculates the copy number in each chromosome segment based on
@@ -411,70 +398,46 @@ bp_region <- function(event, binsize)
 #' region templates to determine copy number variations (CNVs) for each cell.
 #'
 #' @param input A named list where each element is a `GRanges` object representing 
-#'   a single cell.
+#'  a single cell.
 #' @param Reclustering_output A data frame recording the pqArm clustering,
-#'   and re-clustering step results for each cell, including the clustering history.
+#'  and re-clustering step results for each cell, including the clustering history.
 #' @param Recluster_label An integer specifying the cluster from the re-clustering 
-#'   step for which copy number calculation is performed.
+#'  step for which copy number calculation is performed.
 #' @param events A data frame containing continuous bin-level chromosome segments, 
 #'  divided by event region templates.
 #'
 #' @return A numeric data frame where each column corresponds to a cell and each 
 #'  row maps to a chromosome segment from the input event region template.
 #'
-Region_CN <- function(input, Reclustering_output, Recluster_label, events)
+NEW_Region_CN <- function(input, Reclustering_output, Recluster_label, events)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 5.5_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   selected_files <- Reclustering_output %>%
                     dplyr::filter(.data$Recluster_cluster %in% Recluster_label) %>%
                     dplyr::pull(.data$cellID)
-  CN_matrix <- NEW_CN_seq(input = input, Template = selected_files) #LH 022025 modified
-
-  # ======================== Old script ========================================
+  CN_matrix <- NEW_CN_seq(input = input, Template = selected_files)
+  
   Smooth_CN <- data.frame()
   for (i in 1:nrow(events)) {
-  # cat("Dealing with chr", events$chr[i], " Region", events$region[i], "copy number......\n")
-  R_binsCN <- CN_matrix[events$event_binstart[i]:events$event_binend[i],selected_files]
-  R_binsCN_df <- as.data.frame(R_binsCN) # LH remember to change back to R_binsCN
-  R_CN <- sapply(1:ncol(R_binsCN_df), function(a) {
-    freq <- table(R_binsCN_df[ ,a]) %>%
-            as.data.frame() %>%
-            dplyr::arrange(dplyr::desc(.data$Freq)) %>%
-            dplyr::pull(.data$Var1) %>%
-            as.character() %>%
-            as.integer()
-    first_element <- freq[1]
-  })
-  Smooth_CN <- Smooth_CN %>% rbind(R_CN)
+    #cat("Dealing with chr", events$chr[i], " Region", events$region[i], "copy number......\n")
+    R_binsCN <- CN_matrix[events$event_binstart[i]:events$event_binend[i],selected_files]
+    R_binsCN_df <- as.data.frame(R_binsCN)
+    R_CN <- sapply(R_binsCN_df, function(col) { 
+      freq <- table(col)
+      as.integer(names(freq)[which.max(freq)])
+    }) 
+    Smooth_CN <- Smooth_CN %>% rbind(R_CN)
   }
   Smooth_CN <- Smooth_CN %>% stats::setNames(selected_files)
-  # ========================= Old script========================================
   
-  # ========================= New script========================================
-   ##Helper function to find the mode of a numeric vector efficiently
-   #get_mode <- function(x) {
-  #  ux <- unique(x)
-  #  ux[which.max(tabulate(match(x, ux)))]
-  #}
-  # smooth_list <- lapply(seq_len(nrow(events)), function(i) {
-  #  subset_matrix <- CN_matrix[events$event_binstart[i]:events$event_binend[i], 
-  #                             selected_files, drop = FALSE]
-    ## apply returns a flat vector of modes for the columns
-   # apply(subset_matrix, 2, get_mode)
-  #})
-  #Smooth_CN <- do.call(rbind, smooth_list) %>% as.data.frame()
-  #names(Smooth_CN) <- selected_files
-  # ========================= New script========================================
- 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-
- 
+  
   return(Smooth_CN)
 }
 
@@ -488,11 +451,11 @@ Region_CN <- function(input, Reclustering_output, Recluster_label, events)
 #' variations (CNVs) while tolerating a specified level of difference between cells.
 #'
 #' @param CN_incells_input A numeric data frame where each column corresponds to 
-#'   a cell, and each row maps to a chromosome segment from the segment template.
+#'  a cell, and each row maps to a chromosome segment from the segment template.
 #' @param event_region A data frame containing continuous bin-level chromosome 
-#'   segments, divided by event region templates.
+#'  segments, divided by event region templates.
 #' @param dif_ratio A numeric value specifying the tolerance threshold for 
-#'   differences in copy number patterns between cells during clustering.
+#'  differences in copy number patterns between cells during clustering.
 #' @param Subclone_num An integer used as the index for the subclone.
 #'
 #' @return A data frame recording the final result of subclone clustering, 
@@ -501,17 +464,16 @@ Region_CN <- function(input, Reclustering_output, Recluster_label, events)
 #'   - `cellID`: The unique identifier for each cell.
 #'   - `Subclone_cellnum`: The number of cells in each subclone.
 #'
-Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio, 
-                                Subclone_num)
+NEW_Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio, 
+                                    Subclone_num)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 5.6_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
 
-  #colnames(CN_incells_input) <- make.unique(colnames(CN_incells_input)) #LH remember to remove this code
   cell_code <- c(colnames(CN_incells_input))
   
   difChr_num <- NULL
@@ -520,24 +482,20 @@ Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio,
   event_region_dt <- data.table::as.data.table(event_region)
   # Preallocate matrix for results
   difChr_num <- matrix(0, nrow = length(cell_code), ncol = length(cell_code))
-
-  for (i in 1:(length(cell_code) - 1)) {
-    for (j in (i + 1):length(cell_code)) {
-      # Find the differing regions
+  
+  n_cells <- length(cell_code)
+  for (i in 1:(n_cells - 1)) {
+    for (j in (i + 1):n_cells) {
       dif_region <- which(CN_incells_input[, i] != CN_incells_input[, j])
-      # Aggregate differences using data.table for speed
-      dif_event_region <- event_region_dt[dif_region, ]
-      dif_chr_ratio <- dif_event_region %>%
-                       dplyr::group_by(.data$chr) %>%
-                       dplyr::summarise(total_region_ratio = sum(.data$region_ratio), 
-                                        .groups = "drop") %>%
-                       dplyr::filter(.data$total_region_ratio > dif_ratio) %>%
-                       dplyr::summarise(count = dplyr::n()) %>%
-                       dplyr::pull(count)
-      if (length(dif_chr_ratio) == 0) {
+      
+      if (length(dif_region) == 0) {
         dif_chr_ratio <- 0
+      } else {
+        sub_dt <- event_region_dt[dif_region, ]
+        chr_sums <- tapply(sub_dt$region_ratio, sub_dt$chr, sum)
+        dif_chr_ratio <- sum(chr_sums > dif_ratio, na.rm = TRUE)
       }
-      # Assign the result to both (i, j) and (j, i) due to symmetry
+      # Assign symmetric matrix values
       difChr_num[i, j] <- dif_chr_ratio
       difChr_num[j, i] <- dif_chr_ratio
     }
@@ -557,6 +515,7 @@ Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio,
               stats::setNames(c("Subclone_cellnum", "cellID", "Subclone")) %>%
               dplyr::arrange(dplyr::desc(.data$Subclone_cellnum)) %>%
               dplyr::select(c("cellID", "Subclone"))
+  
   while (any(is.na(Subclone$Subclone))) {
     count = count + 1
     ss <- min(which(is.na(Subclone$Subclone) == TRUE))
@@ -566,12 +525,12 @@ Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio,
     difChr_num <- difChr_num[!rownames(difChr_num) %in% selected, ]
     Subclone$Subclone[which(Subclone$cellID %in% selected)] <- count
   }
+  
   Cellnum <- as.data.frame(table(Subclone$Subclone)) %>%
              stats::setNames(c("Subclone", "Subclone_cellnum"))
   Subclone <- merge(Subclone, Cellnum, by = "Subclone")
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-
 
   return(Subclone)
 }
@@ -590,10 +549,9 @@ Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio,
 #'  and each row maps to a chromosome segment from the segment template.
 #' @param each_subclone A data frame recording the clustering history, including 
 #'  pqArm clustering, re-clustering, and subclone clustering results for each cell.
-#' @param min_cell_subclone An integer specifying the minimum cell count required for a 
-#'  cluster to be included in the subclone
 #' @param output A character string specifying the column name in `each_subclone` 
 #'  to be used as output information.
+#' @param min_cell_subclone Minimum cell count required to define a valid subclone.
 #'
 #' @return A data frame recording each subclone's unique chromosome segment template 
 #'  and its corresponding copy number (CN).
@@ -606,7 +564,7 @@ Subclone_clustering <- function(CN_incells_input, event_region, dif_ratio,
 #'   - `Subclone`: Subclone identifier.
 #'   - `CN`: Copy number for the corresponding segment.
 #'
-Subclone_CNregion <- function(sep_region, CN_region, each_subclone, 
+Subclone_CNregion <- function(sep_region, CN_region, each_subclone, min_cell_subclone,
                               output = c("SubcloneCNVRegion", "SubcloneRegionCN"))
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
@@ -614,17 +572,13 @@ Subclone_CNregion <- function(sep_region, CN_region, each_subclone,
   fucStep <- paste0(" 5.7_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  min_cell_subclone <- getOption("min_cell_subclone")
+  #---------------------- main code start below ---------------------
   
-  #--------------------- start below ---------------------
+  s <- each_subclone %>% dplyr::filter(.data$Subclone_cellnum >= min_cell_subclone)
   
-  s <- each_subclone %>%
-       dplyr::filter(.data$Subclone_cellnum >= min_cell_subclone)
   Subclone_CN <- NULL
   for (Label in unique(s$Subclone)) {
-    ss <- s %>%
-          dplyr::filter(.data$Subclone %in% Label) %>%
+    ss <- s %>% dplyr::filter(.data$Subclone %in% Label) %>%
           dplyr::pull(.data$cellID)
     s_CN <- CN_region[ ,ss] #old remember to change back
     #s_CN <- subset(CN_region, colnames(CN_region) %in% ss) #new remember to change back
@@ -654,8 +608,7 @@ Subclone_CNregion <- function(sep_region, CN_region, each_subclone,
     message("ERROR: Not found the output")
   }
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-
-
+  
   return(Subclone_CN)
 }
 
@@ -673,51 +626,50 @@ Subclone_CNregion <- function(sep_region, CN_region, each_subclone,
 #'  template and its corresponding copy number (CN).
 #'  
 #'  The output includes the following columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the chromosome segment.
-#'   - `end`: End position of the chromosome segment.
-#'   - `region`: Unique region identifier.
-#'   - `Subclone`: Subclone identifier.
-#'   - `CN`: Copy number for the corresponding segment.
-#' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
-#'    `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
-#'    Giemsa-stained chromosomes. It should include the following columns:
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the chromosome segment.
+#'  - `end`: End position of the chromosome segment.
+#'  - `region`: Unique region identifier.
+#'  - `Subclone`: Subclone identifier.
+#'  - `CN`: Copy number for the corresponding segment.
 #'  
-#'   - `chrom`: Reference sequence chromosome or scaffold.
-#'   - `chromStart`: Start position in genoSeq.
-#'   - `chromEnd`: End position in genoSeq.
-#'   - `name`: Name of cytogenetic band.
-#'   - `gieStain`: Giemsa stain results.
-#'
+#' @param pqArm_file In-build cytoband template for selection: `hg38`, `hg19`, 
+#'  `mm10`, `mm39`. Or a filepath of a table for cytoband information seen on 
+#'  Giemsa-stained chromosomes. It should include the following columns:
+#'  
+#'  - `chrom`: Reference sequence chromosome or scaffold.
+#'  - `chromStart`: Start position in genoSeq.
+#'  - `chromEnd`: End position in genoSeq.
+#'  - `name`: Name of cytogenetic band.
+#'  - `gieStain`: Giemsa stain results.
+#'  
+#' @param consecutive_region
+#' 
 #' @return A data frame recording CNV regions across subclones, containing the 
 #'  following columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `CNV_region`: The index of CNV regions.
-#'   - `CN`: Copy number state, categorized as either "amp" (Amplification) or 
-#'   "del" (Deletion).
-#'   - `CNV_start`: Start position of the CNV region.
-#'   - `CNV_end`: End position of the CNV region.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `CNV_region`: The index of CNV regions.
+#'  - `CN`: Copy number state, categorized as either "amp" (Amplification) or 
+#'  "del" (Deletion).
+#'  - `CNV_start`: Start position of the CNV region.
+#'  - `CNV_end`: End position of the CNV region.
 #'
-Total_cnvRegion <- function(input, Template, pqArm_file)
+Total_cnvRegion <- function(input, Template, pqArm_file, consecutive_region)
 {
   cnvTree_v_num <- getOption("cnvTree_v_num")
   cnvTree_msg   <- getOption("cnvTree_msg")
   fucStep <- paste0(" 5.8_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  # Locked variable
-  consecutive_region <- getOption("consecutive_region")
-  
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
  
   CN_tem <- data.frame(GenomicRanges::seqnames(input[[1]]$bins),
                        IRanges::ranges(input[[1]]$bins))
   CN_tem <- CN_tem %>% stats::setNames(c("chr", "start", "end", "width"))
-  # consecutive_bins
+
   consecutive_bins = round(consecutive_region/CN_tem$width[1], digits = 0)
   Final_CNVr <- list()
   Final_CNV <- NULL
-
   Template = Template
   Final_CNVr$del <- Total_cnvRegion.DelAmp(Template = Template,
                                            CN_tem = CN_tem,
@@ -725,7 +677,6 @@ Total_cnvRegion <- function(input, Template, pqArm_file)
   Final_CNVr$amp <- Total_cnvRegion.DelAmp(Template = Template,
                                            CN_tem = CN_tem,
                                            method = c("Amp"))
-  
   # Masked centromere region
   # pqArm_range <- pqArm_file.remake(FILE = pqArm_file)
   Masked <- pqArm_file.cen(FILE = pqArm_file)
@@ -765,7 +716,6 @@ Total_cnvRegion <- function(input, Template, pqArm_file)
   }
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
-
   return(Final_CNV)
 }
 
@@ -780,14 +730,13 @@ Total_cnvRegion <- function(input, Template, pqArm_file)
 #'
 #' @param Template A data frame recording each subclone's unique chromosome segment 
 #'  template and its corresponding copy number (CN).
-#'  
 #'  The output includes the following columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the chromosome segment.
-#'   - `end`: End position of the chromosome segment.
-#'   - `region`: Unique region identifier.
-#'   - `Subclone`: Subclone identifier.
-#'   - `CN`: Copy number for the corresponding segment.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the chromosome segment.
+#'  - `end`: End position of the chromosome segment.
+#'  - `region`: Unique region identifier.
+#'  - `Subclone`: Subclone identifier.
+#'  - `CN`: Copy number for the corresponding segment.
 #' @param CN_tem A data frame with columns "chr", "start", "end", and "width", 
 #'  representing the genome divided into fixed-bin size segments.
 #' @param method A character string specifying the CNV type to calculate. Must 
@@ -795,12 +744,12 @@ Total_cnvRegion <- function(input, Template, pqArm_file)
 #'
 #' @return A list with two data frames: `del` and `amp`. Each table contains the 
 #'  following columns:
-#'   - `chr`: Chromosome name (chr1, chr2, ...).
-#'   - `start`: Start position of the bin in the CNV region.
-#'   - `end`: End position of the bin in the CNV region.
-#'   - `width`: Width of the bin.
-#'   - `rows`: Row indices corresponding to the bins.
-#'   - `n_subclone`: Number of subclones with CNV in the bin.
+#'  - `chr`: Chromosome name (chr1, chr2, ...).
+#'  - `start`: Start position of the bin in the CNV region.
+#'  - `end`: End position of the bin in the CNV region.
+#'  - `width`: Width of the bin.
+#'  - `rows`: Row indices corresponding to the bins.
+#'  - `n_subclone`: Number of subclones with CNV in the bin.
 #'
 Total_cnvRegion.DelAmp <- function(Template, CN_tem, method = c("Del", "Amp"))
 {
@@ -809,7 +758,7 @@ Total_cnvRegion.DelAmp <- function(Template, CN_tem, method = c("Del", "Amp"))
   fucStep <- paste0(" 5.8.1_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   if (method == "Del"){
     s_chr <- Template %>% dplyr::filter(.data$CN < 2)
@@ -851,7 +800,6 @@ Total_cnvRegion.DelAmp <- function(Template, CN_tem, method = c("Del", "Amp"))
     Final_CNVr <- rbind(Final_CNVr, ss)
   }
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
-
 
   return(Final_CNVr)
 }
@@ -896,7 +844,7 @@ cnvRegion.toPQarm <- function(FILE, pqArm_file)
   fucStep <- paste0(" 5.9_cnvTree_", cnvTree_v_num)
   DebugMsg(fucStep, "start", cnvTree_msg = cnvTree_msg)
   
-  #--------------------- start below ---------------------
+  #---------------------- main code start below ---------------------
   
   if (pqArm_file == "hg38" | pqArm_file == "hg19" | 
       pqArm_file == "mm10" | pqArm_file == "mm39") {
@@ -908,14 +856,14 @@ cnvRegion.toPQarm <- function(FILE, pqArm_file)
                                                  "name","gieStain")) %>%
                  dplyr::filter(.data$chr %in% FILE$chr)
   Intersect <- merge(FILE, pqArm_range, by = "chr") %>%
-    dplyr::mutate(final_start = dplyr::case_when(.data$CNV_start<.data$start ~ 1,
-                                                 .data$CNV_start>=.data$start & 
-                                                   .data$CNV_start<=.data$end ~ 2,
-                                                 .data$CNV_start>.data$end ~ 3),
-                  final_end = dplyr::case_when(.data$CNV_end<.data$start ~ 1,
-                                               .data$CNV_end>=.data$start & 
-                                                 .data$CNV_end<=.data$end ~ 2,
-                                               .data$CNV_end>.data$end ~ 3),
+    dplyr::mutate(final_start = dplyr::case_when(.data$CNV_start < .data$start ~ 1,
+                                                 .data$CNV_start >= .data$start & 
+                                                   .data$CNV_start <= .data$end ~ 2,
+                                                 .data$CNV_start > .data$end ~ 3),
+                  final_end = dplyr::case_when(.data$CNV_end < .data$start ~ 1,
+                                               .data$CNV_end >= .data$start & 
+                                                 .data$CNV_end <= .data$end ~ 2,
+                                               .data$CNV_end > .data$end ~ 3),
                   pattern = paste0(.data$final_start, .data$final_end),
                   overlap = ifelse(.data$pattern %in% c(11, 33), 0, 1)) %>%
     dplyr::filter(.data$overlap == 1) %>%
@@ -927,7 +875,6 @@ cnvRegion.toPQarm <- function(FILE, pqArm_file)
 
   DebugMsg(fucStep, "end", cnvTree_msg = cnvTree_msg)
 
- 
   return(Final_output)
 }
 
