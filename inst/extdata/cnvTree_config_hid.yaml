@@ -5,3 +5,4 @@ cluster: 1L
 sexchromosome: no
 smoothheatmap: yes
 RNAdataSource: "2" # "1: dataframe" or 2: inferCNV"
+percentage: 0.5

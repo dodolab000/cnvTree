@@ -124,33 +124,18 @@ Aneufinder(inputfolder="my-data-folder", outputfolder="my-output-folder")
   You can execute the entire analysis with a single function call:
   
 ```
-# Read and modify cnvTree configuration file   
+# 1. Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
 file.edit("cnvTree_config.yaml")
 
-# Read the modified local cnvTree_config.yaml
+# 2. Read the modified cnvTree_config.yaml
 config <- yaml::read_yaml("cnvTree_config.yaml")
 
-# Single-call execution
-cnvTree(cores = config$cores,
-        DNAdatasource      = config$DNAdatasource, 
-        pqArm_file         = config$pqArm_file, 
-        output_dir         = config$output_dir, 
-        input_dir_DNA      = config$input_dir_DNA, 
-        input_dir_RNA      = config$input_dir_RNA,
-        cnv_ratio_DNA      = config$cnv_ratio_DNA, 
-        cnv_ratio_RNA      = config$cnv_ratio_RNA, 
-        cellcutoff_DNA     = config$cellcutoff_DNA, 
-        cellcutoff_RNA     = config$cellcutoff_RNA,
-        consecutive_region = config$consecutive_region,
-        overlap_region     = config$overlap_region,
-        difratio_chr       = config$difratio_chr,
-        dif_ratio          = config$dif_ratio,
-        min_cell           = config$min_cell,
-        min_cell_subclone  = config$min_cell_subclone,
-        ZeroCol            = config$ZeroCol,
-        cost_calculate     = config$cost_calculate,
-        treeType           = config$treeType)
+# 3. Keep parameters that cnvTree accepts
+valid_args <- intersect(names(config), names(formals(cnvTree)))
+
+# 4. One-step execute cnvTree
+do.call(cnvTree, config[valid_args])
 ```                            
 
 ##### Step-by-step Execution
@@ -161,14 +146,14 @@ cnvTree(cores = config$cores,
 1. **Pre-Setting**: 
 
 ```
-# Read and modify cnvTree configuration file   
+# 1. Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
 file.edit("cnvTree_config.yaml")
 
-# Read the modified local cnvTree_config.yaml
+# 2. Read the modified local cnvTree_config.yaml
 config <- yaml::read_yaml("cnvTree_config.yaml")
 
-# Set up file directory
+# 3. Set up file directory
 selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
                                  input_dir_RNA = config$input_dir_RNA)
 ```
@@ -205,48 +190,27 @@ selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
   to be retained in the final output. A higher value filters out shorter CNV regions.
     
 ```
+## data from other CNV calling tools            
+valid_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering_df)))
+do.call(cnvTree, cnvTree_scDNAclustering_df[valid_args])
+
+## data from AneuFinder
+valid_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering)))
+do.call(cnvTree, cnvTree_scDNAclustering[valid_args])
+
 # Note
 # To input data processed from AneuFinder to cnvTree, set input_dir_DNA up to ~/MODELS/method-edivisive
-
-# data from AneuFinder
-cnvTree_scDNAclustering(input_dir_DNA      = config$input_dir_DNA, 
-                        pqArm_file         = config$pqArm_file, 
-                        output_dir         = config$output_dir,
-                        cellcutoff_DNA     = config$cellcutoff_DNA,
-                        min_cell           = config$min_cell,
-                        min_cell_subclone  = config$min_cell_subclone,
-                        cnv_ratio_DNA      = config$cnv_ratio_DNA,
-                        consecutive_region = config$consecutive_region,
-                        overlap_region     = config$overlap_region,
-                        difratio_chr       = config$difratio_chr,
-                        dif_ratio          = config$dif_ratio)
-
-# data from other CNV calling tools            
-cnvTree_scDNAclustering_df(cores              = config$cores,
-                           input_dir_DNA      = config$input_dir_DNA, 
-                           pqArm_file         = config$pqArm_file, 
-                           output_dir         = config$output_dir,
-                           cellcutoff_DNA     = config$cellcutoff_DNA,
-                           min_cell           = config$min_cell,
-                           min_cell_subclone  = config$min_cell_subclone,
-                           cnv_ratio_DNA      = config$cnv_ratio_DNA,
-                           consecutive_region = config$consecutive_region,
-                           overlap_region     = config$overlap_region,
-                           difratio_chr       = config$difratio_chr,
-                           dif_ratio          = config$dif_ratio) 
-                           
 ```
+
 3.  **scRNA_Integrate**: 
+
 ```
-cnvTree_scRNAclustering(input_dir_RNA   = config$input_dir_RNA,
-                        selected_groups = selected,
-                        output_dir      = config$output_dir,
-                        cellcutoff_DNA  = config$cellcutoff_DNA,
-                        cellcutoff_RNA  = config$cellcutoff_RNA,
-                        cnv_ratio_RNA   = config$cnv_ratio_RNA,
-                        ZeroCol         = config$ZeroCol)
+valid_args <- intersect(names(config), names(formals(cnvTree_scRNAclustering)))
+do.call(cnvTree, cnvTree_scRNAclustering[valid_args])
 ```
+
 4.  **Phylogenetic_Tree and output results**: 
+
 ```
 generate_Tree(output_dir     = config$output_dir,
               treeType       = config$treeType,

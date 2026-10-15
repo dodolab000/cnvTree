@@ -168,7 +168,7 @@ run_cnvTree_Pipeline <- function(output_dir, input_dir_RNA)
   
   # Ensure the output directory exists
   if (!dir.exists(output_dir)) {
-    dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+    dir.create(output_dir, showWarnings = TRUE, recursive = TRUE)
     message("Created output folder: ", output_dir)
   }
   
