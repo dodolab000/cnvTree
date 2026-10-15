@@ -1,9 +1,9 @@
 pqArm_file: 'hg38' # 'hg38', 'hg19', 'hg39' or 'mm10'
-input_dir_DNA: '~/Demodata/example_AneuFinder_output/MODELS/method-edivisive' 
-input_dir_RNA: '~/Demodata/example_InferCNV_output' 
-output_dir: '~/Result_test'
+input_dir_DNA: 'path/to/DNA/data' 
+input_dir_RNA: 'path/to/RNA/data' 
+output_dir: 'path/to/output'
 cores: 4
-DNAdatasource: '2' # 1. dataframe 2. Aneufinder
+DNAdatasource: '1' # 1. dataframe 2. Aneufinder
 cellcutoff_DNA: 5 # D = 5
 cellcutoff_RNA: 5 # D = 5
 min_cell: 5 # D = 5
@@ -15,5 +15,5 @@ difratio_chr: 0.3 # D = 0.3
 cnv_ratio_DNA: 0.5 # D = 0.5
 cnv_ratio_RNA: 0.5 # D = 0.5
 ZeroCol: FALSE # D = FALSE
-cost_calculate: '2nodeMul' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
-treeType: 'RNA' # 'RNA', 'DNARNA'
+cost_calculate: 'NULL' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
+treeType: 'DNARNA' # 'RNA', 'DNARNA'
