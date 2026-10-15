@@ -81,7 +81,7 @@ infercnv_cnvregion <- function(input_dir_RNA, selected_groups)
       selected_groups_index <- selected_groups[i]
       cnv_regionlist[[i]] <- cnv_regions %>% 
         filter(str_detect(cell_group_name, paste0("^", selected_groups_index)), state != 3) %>% 
-        mutate(cell_group_name = str_replace(cell_group_name, 
+        mutate(cell_group_name = stringr::str_replace(cell_group_name, 
             paste0("^(", stringr::str_flatten(selected_groups, collapse = "|"), ")\\."), ""),
                CNV_size = abs(start - end),
                CN_RNA = ifelse(state > 3, "amp", "del"))
