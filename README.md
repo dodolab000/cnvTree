@@ -52,6 +52,10 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("AneuFinder")
 
+or
+
+pak::pak("github.com/allisonh-h/AneuFinder_cpp.git")
+
 # Run Aneufinder
 # The following call produces plots and genome browser files for all BAM files in "my-data-folder"
 Aneufinder(inputfolder = "my-data-folder", outputfolder = "my-output-folder")
@@ -80,7 +84,10 @@ Aneufinder(inputfolder = "my-data-folder", outputfolder = "my-output-folder")
     
 ```
 # Installation 
-BiocManager::install("infercnv")
+devtools::install_github("broadinstitute/infercnv")
+
+For detailed instructions and prerequisites, 
+see the [inferCNV Installation Guide](https://github.com/broadinstitute/inferCNV/wiki/Installing-infercnv).
 
 # Create inferCNV object
 # Requires a raw counts matrix, an annotations file, and a gene ordering file
@@ -137,18 +144,21 @@ infercnv_obj = infercnv::run(infercnv_obj,
   You can execute the entire analysis with a single function call:
   
 ```
+library(cnvTree)
+library(dplyr)
+
 # 1. Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
-file.edit("cnvTree_config.yaml")
+file.edit(config_path)
 
 # 2. Read the modified cnvTree_config.yaml
-config <- yaml::read_yaml("cnvTree_config.yaml")
+config <- yaml::read_yaml(config_path)
 
 # 3. Keep parameters that cnvTree accepts
-valid_args <- intersect(names(config), names(formals(cnvTree)))
+cnvtree_args <- intersect(names(config), names(formals(cnvTree)))
 
 # 4. One-step execute cnvTree
-do.call(cnvTree, config[valid_args])
+do.call(cnvTree, config[cnvtree_args])
 ```                            
 
 ##### Step-by-step Execution
@@ -161,10 +171,10 @@ do.call(cnvTree, config[valid_args])
 ```
 # Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
-file.edit("cnvTree_config.yaml")
+file.edit(config_path)
 
 # Read the modified local cnvTree_config.yaml
-config <- yaml::read_yaml("cnvTree_config.yaml")
+config <- yaml::read_yaml(config_path)
 
 # Set up file directory
 selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
@@ -220,7 +230,7 @@ do.call(cnvTree_scDNAclustering, config[dna_args])
 ```
 rna_args <- intersect(names(config), names(formals(cnvTree_scRNAclustering)))
 rna_args <- c(config[valid_args], list(selected_groups = selected))
-do.call(cnvTree_scRNAclustering, rna_args)
+do.call(cnvTree_scRNAclustering, config[rna_args])
 ```
 
 4.  **Phylogenetic_Tree**: 
