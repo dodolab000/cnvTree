@@ -67,7 +67,7 @@ infercnv_cnvregion <- function(input_dir_RNA, selected_groups)
     cnv_region <- cnv_regions %>% 
                   filter(stringr::str_detect(cell_group_name, paste0("^(", paste(selected_groups, collapse = "|"), ")")), 
                          state != 3) %>% 
-                  mutate(cell_group_name = str_replace(
+                  mutate(cell_group_name = stringr::str_replace(
                       cell_group_name, 
                       paste0("^(", stringr::str_flatten(selected_groups, collapse = "|"), ")\\."), 
                              ""),
