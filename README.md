@@ -223,7 +223,7 @@ rna_args <- c(config[valid_args], list(selected_groups = selected))
 do.call(cnvTree_scRNAclustering, rna_args)
 ```
 
-4.  **Phylogenetic_Tree and output results**: 
+4.  **Phylogenetic_Tree**: 
 
 ```
 generate_Tree(output_dir = config$output_dir,
