@@ -84,21 +84,20 @@ BiocManager::install("infercnv")
 
 # Create inferCNV object
 # Requires a raw counts matrix, an annotations file, and a gene ordering file
-infercnv_obj = createInfercnvObject(
-  raw_counts_matrix = "counts.matrix",
-  annotations_file = "cellAnnotations.txt",
-  delim = "\t",
-  gene_order_file = "gene_ordering_file.txt",
-  ref_group_names = c("reference") 
+infercnv_obj = createInfercnvObject(raw_counts_matrix = "counts.matrix",
+                                    annotations_file = "cellAnnotations.txt",
+                                    delim = "\t",
+                                    gene_order_file = "gene_ordering_file.txt",
+                                    ref_group_names = c("reference") 
 
 # Run InferCNV
-infercnv_obj = infercnv::run(
-  infercnv_obj,
-  cutoff = 0.1, # Use 0.1 for 10x Genomics data, 1.0 for Smart-seq2
-  out_dir = "my-output-folder",
-  cluster_by_groups = TRUE,
-  denoise = TRUE,
-  HMM = TRUE)
+infercnv_obj = infercnv::run(infercnv_obj,
+                             cutoff = 0.1, 
+                             # Use 0.1 for 10x Genomics data, 1.0 for Smart-seq2
+                             out_dir = "my-output-folder",
+                             cluster_by_groups = TRUE,
+                             denoise = TRUE,
+                             HMM = TRUE)
 ```
 
 ##### Cytoband information
