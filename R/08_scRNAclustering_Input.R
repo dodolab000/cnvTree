@@ -24,6 +24,7 @@
 #'
 #' @return A `data.frame` (or `tibble`) containing filtered CNV regions with 
 #' additional columns: `CNV_size` and `CN`.
+#' @import stringr str_replace str_flatten
 #' 
 infercnv_cnvregion <- function(input_dir_RNA, selected_groups)
 {
@@ -67,9 +68,9 @@ infercnv_cnvregion <- function(input_dir_RNA, selected_groups)
     cnv_region <- cnv_regions %>% 
                   filter(stringr::str_detect(cell_group_name, paste0("^(", paste(selected_groups, collapse = "|"), ")")), 
                          state != 3) %>% 
-                  mutate(cell_group_name = stringr::str_replace(
+                  mutate(cell_group_name = str_replace(
                       cell_group_name, 
-                      paste0("^(", stringr::str_flatten(selected_groups, collapse = "|"), ")\\."), 
+                      paste0("^(", str_flatten(selected_groups, collapse = "|"), ")\\."), 
                              ""),
                   CNV_size = abs(start - end),
                   CN = ifelse(state > 3, "amp", "del"))
@@ -81,8 +82,8 @@ infercnv_cnvregion <- function(input_dir_RNA, selected_groups)
       selected_groups_index <- selected_groups[i]
       cnv_regionlist[[i]] <- cnv_regions %>% 
         filter(str_detect(cell_group_name, paste0("^", selected_groups_index)), state != 3) %>% 
-        mutate(cell_group_name = stringr::str_replace(cell_group_name, 
-            paste0("^(", stringr::str_flatten(selected_groups, collapse = "|"), ")\\."), ""),
+        mutate(cell_group_name = str_replace(cell_group_name, 
+            paste0("^(", str_flatten(selected_groups, collapse = "|"), ")\\."), ""),
                CNV_size = abs(start - end),
                CN_RNA = ifelse(state > 3, "amp", "del"))
     }
