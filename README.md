@@ -1,4 +1,4 @@
-# **cnvTree**
+**cnvTree**
 
 ### Overview
 
@@ -54,7 +54,7 @@ BiocManager::install("AneuFinder")
 
 # Run Aneufinder
 # The following call produces plots and genome browser files for all BAM files in "my-data-folder"
-Aneufinder(inputfolder="my-data-folder", outputfolder="my-output-folder")
+Aneufinder(inputfolder = "my-data-folder", outputfolder = "my-output-folder")
 ```
 
 2.  CNV data from **other CNV calling tools**
@@ -146,14 +146,14 @@ do.call(cnvTree, config[valid_args])
 1. **Pre-Setting**: 
 
 ```
-# 1. Read and modify cnvTree configuration file   
+# Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
 file.edit("cnvTree_config.yaml")
 
-# 2. Read the modified local cnvTree_config.yaml
+# Read the modified local cnvTree_config.yaml
 config <- yaml::read_yaml("cnvTree_config.yaml")
 
-# 3. Set up file directory
+# Set up file directory
 selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
                                  input_dir_RNA = config$input_dir_RNA)
 ```
@@ -191,12 +191,12 @@ selected <- run_cnvTree_Pipeline(output_dir = config$output_dir,
     
 ```
 ## data from other CNV calling tools            
-valid_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering_df)))
-do.call(cnvTree, cnvTree_scDNAclustering_df[valid_args])
+dna_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering_df)))
+do.call(cnvTree_scDNAclustering_df, config[dna_args])
 
 ## data from AneuFinder
-valid_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering)))
-do.call(cnvTree, cnvTree_scDNAclustering[valid_args])
+dna_args <- intersect(names(config), names(formals(cnvTree_scDNAclustering)))
+do.call(cnvTree_scDNAclustering, config[dna_args])
 
 # Note
 # To input data processed from AneuFinder to cnvTree, set input_dir_DNA up to ~/MODELS/method-edivisive
@@ -205,17 +205,18 @@ do.call(cnvTree, cnvTree_scDNAclustering[valid_args])
 3.  **scRNA_Integrate**: 
 
 ```
-valid_args <- intersect(names(config), names(formals(cnvTree_scRNAclustering)))
-do.call(cnvTree, cnvTree_scRNAclustering[valid_args])
+rna_args <- intersect(names(config), names(formals(cnvTree_scRNAclustering)))
+rna_args <- c(config[valid_args], list(selected_groups = selected))
+do.call(cnvTree_scRNAclustering, rna_args)
 ```
 
 4.  **Phylogenetic_Tree and output results**: 
 
 ```
-generate_Tree(output_dir     = config$output_dir,
-              treeType       = config$treeType,
+generate_Tree(output_dir = config$output_dir,
+              treeType = config$treeType,
               cost_calculate = config$cost_calculate,
-              selected       = "sample_name")
+              selected = "sample_name")
 ```
 
 ### cnvTree Outputs

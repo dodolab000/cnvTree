@@ -1,7 +1,7 @@
 pqArm_file: 'hg38' # 'hg38', 'hg19', 'hg39' or 'mm10'
-input_dir_DNA: 'path/to/your/scDNA_file' 
-input_dir_RNA: 'path/to/your/scRNA_file' 
-output_dir: 'path/to/your/output_directory'
+input_dir_DNA: '~/Demodata/example_AneuFinder_output/MODELS/method-edivisive' 
+input_dir_RNA: '~/Demodata/example_InferCNV_output' 
+output_dir: '~/Result_test'
 cores: 4
 DNAdatasource: '2' # 1. dataframe 2. Aneufinder
 cellcutoff_DNA: 5 # D = 5
