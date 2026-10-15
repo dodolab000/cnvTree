@@ -317,4 +317,4 @@ For questions, issues, or feedback, please contact:
 * **TingWen C.** — [twc@nycu.edu.tw](mailto:twc@nycu.edu.tw)
 * **YiTzu L.** — [it35101.bt11@nycu.edu.tw](mailto:it35101.bt11@nycu.edu.tw)
 * **Allison H.** — [lhuang427@icloud.com](mailto:lhuang427@icloud.com)
-* **Yuki T.** — [yuki.mid12@nycu.edu.tw](mailto:yuki.mid12@nycu.edu.tw)
+* **Yuki T.** — [yuki.md12@nycu.edu.tw](mailto:yuki.mid12@nycu.edu.tw)
