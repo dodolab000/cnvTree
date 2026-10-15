@@ -542,7 +542,7 @@ cnvTree.plottree <- function(inputFILE, final_tree)
       inputFILE$Total_cellnum > Range[2] & inputFILE$Total_cellnum <= Range[3] ~ 15,
       inputFILE$Total_cellnum > Range[3] ~ 20))
   vertices <- vertices %>% filter(name %in% selected_node)
-  final_graph <- graph_from_data_frame(edges, vertices = vertices)
+  final_graph <- igraph::graph_from_data_frame(edges, vertices = vertices)
   
   # change figure legend names
   Label <- c(paste("≤", Range[1], "(≤25%)"),

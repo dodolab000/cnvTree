@@ -15,5 +15,5 @@ difratio_chr: 0.3 # D = 0.3
 cnv_ratio_DNA: 0.5 # D = 0.5
 cnv_ratio_RNA: 0.5 # D = 0.5
 ZeroCol: FALSE # D = FALSE
-cost_calculate: 'NULL' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
+cost_calculate: '2nodeMul' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
 treeType: 'DNARNA' # 'RNA', 'DNARNA'
