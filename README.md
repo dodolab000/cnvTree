@@ -240,7 +240,7 @@ do.call(cnvTree_scDNAclustering, config[dna_args])
 ```
 rna_args <- intersect(names(config), names(formals(cnvTree_scRNAclustering)))
 rna_args <- c(config[valid_args], list(selected_groups = selected))
-do.call(cnvTree_scRNAclustering, config[rna_args])
+do.call(cnvTree_scRNAclustering, rna_args)
 ```
 
 4.  **Phylogenetic_Tree**: 

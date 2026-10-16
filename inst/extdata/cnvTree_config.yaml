@@ -1,19 +1,19 @@
-pqArm_file: 'hg38' # 'hg38', 'hg19', 'hg39' or 'mm10'
-input_dir_DNA: 'path/to/your/DNA_file' 
-input_dir_RNA: 'path/to/your/RNA_file' 
-output_dir: 'path/to/save/outputs' # path/to/DNA/file
+pqArm_file: 'hg38'                     # 'hg38', 'hg19', 'hg39' or 'mm10'
+input_dir_DNA: 'path/to/your/DNA_file' # path/to/DNA_data/file
+input_dir_RNA: 'path/to/your/RNA_file' # path/to/RNA_data/file
+output_dir: 'path/to/save/outputs'     # path/to/output
 cores: 4
-DNAdatasource: '1' # 1. dataframe 2. Aneufinder
-cellcutoff_DNA: 5 # D = 5
-cellcutoff_RNA: 5 # D = 5
-min_cell: 5 # D = 5
-min_cell_subclone: 5 # D = 5
-consecutive_region: 1.0e+07 # D = 1.0e+07
-overlap_region: 1.0e+07 # D = 1.0e+07
-dif_ratio: 0.2 # D = 0.2
-difratio_chr: 0.3 # D = 0.3
-cnv_ratio_DNA: 0.5 # D = 0.5
-cnv_ratio_RNA: 0.5 # D = 0.5
-ZeroCol: FALSE # D = FALSE
-cost_calculate: '2nodeMul' # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
-treeType: 'DNARNA' # 'RNA', 'DNARNA'
+DNAdatasource: '1'                     # 1. dataframe 2. Aneufinder
+cellcutoff_DNA: 5                      # D = 5
+cellcutoff_RNA: 5                      # D = 5
+min_cell: 5                            # D = 5
+min_cell_subclone: 5                   # D = 5
+consecutive_region: 1.0e+07            # D = 1.0e+07
+overlap_region: 1.0e+07                # D = 1.0e+07
+dif_ratio: 0.2                         # D = 0.2
+difratio_chr: 0.3                      # D = 0.3
+cnv_ratio_DNA: 0.5                     # D = 0.5
+cnv_ratio_RNA: 0.5                     # D = 0.5
+ZeroCol: FALSE                         # D = FALSE
+cost_calculate: '2nodeMul'             # '2nodeMul', 'Rank_Mul', 'Rank_Add', 'Start_num', or 'NULL'
+treeType: 'DNARNA'                     # 'RNA', 'DNARNA'
