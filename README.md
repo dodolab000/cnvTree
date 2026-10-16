@@ -1,6 +1,4 @@
-**cnvTree**
-
-### Overview
+### cnvTree
 
 Single-cell DNA sequencing (scDNA-seq) analyzes the limited DNA content of 
 individual cells to detect copy number variations (CNVs). CNVs, which involve 
@@ -8,28 +6,31 @@ deletions or duplications of genes or chromosome arms, are common in tumors and
 can activate oncogenes or inactivate tumor suppressor genes, directly influencing 
 transcriptomic gene expression and driving intratumoral heterogeneity. 
 
-By combining single-cell genomic copy number profiles with single-cell RNA 
-sequencing (scRNA-seq) data, researchers can map genomic alterations to functional 
-expression changes, tracing how clonal selection and transcriptional states 
-co-evolve. 
+Integrating single-cell genomic copy number profiles with single-cell RNA sequencing 
+(scRNA-seq) data (e.g., outputs derived from AneuFinder and inferCNV. _cnvTree work flow_
+, top left) enables the functional mapping of genomic alterations to gene expression 
+changes, illuminating the dynamic interplay between clonal selection and transcriptional 
+evolution. 
 
 Reconstructing phylogenetic trees from these multi-omic single-cell CNV profiles 
 resolves the evolutionary lineage of tumor subpopulations, mapping clonal architecture 
-and tumor progression over time.
+and tumor progression over time. 
 
 The cnvTree package is composed of three integrated analytical modules:
 
 1. **scDNA_cluster**: Leverages CNV data from scDNA-seq to group cells into distinct
    clusters based on their CNV patterns, providing initial cell clustering results 
-   and identifying refined CNV regions.
+   and identifying refined CNV regions (fig. A. and B.).
 
 2. **scRNA_Integrate**: This step perfom multi-omic integration. Takes the refined 
    CNV results from the scDNAcluster module and superimpose them with inferred 
-   transcriptomic CNVs, which are extracted CNV profiles from InferCNV.
+   transcriptomic CNVs, which are extracted CNV profiles from InferCNV (fig C.).
 
 3. **Phylogenetic_Tree**: Synthesizes consensus CNVs from both scDNAcluster and
    scRNAIntegrate modalities to construct robust tumor phylogenetic trees
-   that map clonal evolution.
+   that map clonal evolution (fig. D).
+   
+![cnvTree work flow](man/figures/cnvTree.png)
  
 ### Installation
 
@@ -52,8 +53,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("AneuFinder")
 
-or
-
+# Alternative installation
 pak::pak("github.com/allisonh-h/AneuFinder_cpp.git")
 
 # Run Aneufinder
@@ -107,6 +107,16 @@ infercnv_obj = infercnv::run(infercnv_obj,
                              HMM = TRUE)
 ```
 
+##### Install other dependencies
+
+```
+# Install CRAN dependencies
+install.packages(c("dplyr", "ggraph", "igraph", "BiocManager"))
+
+# Install ComplexHeatmap from Bioconductor
+BiocManager::install("ComplexHeatmap")
+```
+
 ##### Cytoband information
 
   The parameter `pqArm_file` requires a table containing cytoband information, 
@@ -139,7 +149,7 @@ infercnv_obj = infercnv::run(infercnv_obj,
 
 ### Running cnvTree
 
-##### Quick Start
+##### One-step Quick Start
 
   You can execute the entire analysis with a single function call:
   
