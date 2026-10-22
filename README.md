@@ -156,6 +156,8 @@ BiocManager::install("ComplexHeatmap")
 ```
 library(cnvTree)
 library(dplyr)
+library(ggraph)
+library(ComplexHeatmap)
 
 # 1. Read and modify cnvTree configuration file   
 config_path <- system.file("extdata", "cnvTree_config.yaml", package = "cnvTree")
