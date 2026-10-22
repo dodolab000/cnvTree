@@ -3,8 +3,8 @@
 #' Transform CN matrix to Total Deletion/Loss/Neu/Amp and based on Arm level to
 #' smooth the CN; this function processes single-cell copy number data by smoothing
 #' copy number variations (CNVs) at the arm level. It utilizes clustering results
-#' and cytoband information to assign copy number states (Total Deletion, Loss, 
-#' Neutral, or Amplification) for each chromosomal arm.
+#' and cytoband information to assign copy number states (Total Loss, Loss, Neutral, 
+#' Gain, Amplification, High Amplification) for each chromosomal arm.
 #'
 #' @param input A named list where each element is a `GRanges` object representing 
 #'  a single cell.
