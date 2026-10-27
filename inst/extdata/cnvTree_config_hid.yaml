@@ -1,31 +1,22 @@
-# cnvTree_v_num: cnvTree version
-cnvTree_v_num: v040
-# cnvTree_msg: trancing function flows for debugging if 'TRUE'
+cnvTree_v_num: v051
 cnvTree_msg: yes
-# difratio_chr: A numeric value defining the threshold for acceptable difference  
-#   ratios across different chromosomes.
-difratio_chr: 0.3
-# dif_ratio: A numeric value defining the tolerance threshold for copy number 
-#   differences between cells within a cluster.
-dif_ratio: 0.2
-# cluster: The assigned cluster label (k = 2)
-cluster: 1.0
-# min_cell: An integer specifying the minimum cell count required for a cluster  
-#   to be included in the output.
-min_cell: 2.0
-# overlap_region: An integer representing genomic regions where copy number  
-#   frequently changes in the subclone clustering step.
-overlap_region: 1.0e+07
-# consecutive_region: A numeric value defining the minimum CNV region length  
-#   threshold for filtering CNV events in the final output.
-consecutive_region: 1.0e+06
-# cores: An integer specifying the number of CPU cores to use for parallel 
-#   processing, default = 1.
-core: 1.0
-# sexchromosome: A logical value. If `TRUE`, the output includes sex chromosome
-# copy number information.
-sexchromosome: yes
-# smoothheatmap: A logical value. If `TRUE`, the final output applies smoothing  
-#   over a 10⁶ bp range in chromosome copy number visualizations.
-smoothheatmap: yes
-
+cluster: 4.0  # (d = 4)
+overlap_region: 5.0e+06   # (d = 5.0e+06)
+consecutive_region: 5.0e+06   # (d = 5.0e+06)
+difratio_chr: 0.2   # (d = 0.2)
+dif_ratio: 0.2   # (d = 0.2)
+# pqArm_cellnum: Numeric threshold specifying the minimum number of cells required 
+# for a p/q arm pattern to be retained for downstream analysis.
+pqArm_cellnum: 1   # (d = 1)
+min_cell_GMM: 2  # (d = 2)
+num_pcs: 30   # (d = 30)
+g_clusters: 9 # set 9 to auto detect optimal group size
+sexchromosome: no  # (d = no)
+smoothheatmap: yes  # (d = yes)
+entropy_threshold: 0.2   # (d = 0.2) set 1 to not drop any cell if using GMM
+RNAdataSource: '2'   # InferCNV
+# CN_state_grouping: Integer (3 or 6) specifying the resolution for grouping 
+#   copy number states. Use 3 for basic classification (deletion, neutral, 
+#   amplification) or 6 for higher resolution (deletion, lose, neutral, 
+#   amplification, gain and high gain)
+percentage: 0.5   # (d = 0.5)

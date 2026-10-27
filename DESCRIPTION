@@ -1,11 +1,11 @@
 Package: cnvTree
-Title: Clustering and evolutionary history construction based on copy number variations in single-cell data
-Version: 0.4.0
+Title: Clustering and Evolutionary History Construction Based on Copy Number Variations in Single-Cell Data
+Version: 0.5.1
 Authors@R: c(
     person(given = "Ting-Wen",
            family = "Chen",
            email = "twc@nycu.edu.tw",
-           role = "aut",
+           role = c("aut", "fnd"),
            comment = c(ORCID = "0000-0003-4028-2375")),
     person(given = "Yi-Tzu",
            family = "Lo",
@@ -14,39 +14,33 @@ Authors@R: c(
     person(given = "Ling-Yi",
            family = "Huang",
            email = "lingyihuang@nycu.edu.tw",
-           role = "cre")
+           role = c("aut", "cre"))
   )
-Description: Provides functionality for clustering and evolutionary history construction 
-    based on copy number variation in single-cell data.
+Description: Tools for clustering single-cell copy number variation (CNV) profiles 
+ and constructing evolutionary lineage trees from DNA or integrated DNA+RNA data.
 License: GPL-3
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
-Imports:
-    dplyr,
-    tidyr, 
-    magrittr,
-    rlang, 
-    stringr,
-    GenomicRanges,
-    IRanges,
-    data.table, 
-    tibble, 
-    gdata,
-    future, 
-    Rfast, 
-    ggpubr,
-    ComplexHeatmap,
-    circlize,
-    EnrichedHeatmap,
-    grDevices, 
-    S4Vectors,
-    ggplot2,
-    utils
-Suggests:
-    openxlsx,
-    tidyverse,
-    tidytable
 Depends:
     R (>= 4.2)
+Imports:
+    circlize,
+    ComplexHeatmap,
+    data.table,
+    dplyr,
+    EnrichedHeatmap,
+    future,
+    gdata,
+    GenomicRanges,
+    ggplot2,
+    ggpubr,
+    IRanges,
+    Rfast,
+    rlang,
+    S4Vectors,
+    stringr,
+    tibble,
+    tidyr
+Suggests:
+    openxlsx
+Config/roxygen2/version: 8.1.1
