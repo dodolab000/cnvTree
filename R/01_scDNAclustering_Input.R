@@ -450,12 +450,12 @@ cnvTree <- function(cores, DNAdatasource, pqArm_file, output_dir, input_dir_DNA,
     
     ck <- read.table(ckPoint_rna[1], header = TRUE, sep = "")
     if (nrow(ck) == 1L && sum(as.numeric(ck[1, 1:(ncol(ck) - 2)])) == 0) {
-      cat("cnvTree scRNA_Integrage Results are saved to: ", config$output_dir)
+      cat("cnvTree scRNA_Integrage Results are saved to: ", output_dir)
       stop("CNV patterns are too simplified to generate a tree.\n")
     } else {
-      generate_Tree(output_dir = config$output_dir,
-                    treeType = config$treeType,
-                    cost_calculate = config$cost_calculate,
+      generate_Tree(output_dir = output_dir,
+                    treeType = treeType,
+                    cost_calculate = cost_calculate,
                     selected = selected[1])
     }
   }
